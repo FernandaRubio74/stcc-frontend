@@ -1,5 +1,7 @@
 # Ideator — Frontend
 
+[![CI Frontend](https://github.com/FernandaRubio74/stcc-frontend/actions/workflows/ci.yml/badge.svg)](https://github.com/FernandaRubio74/stcc-frontend/actions/workflows/ci.yml)
+
 Interfaz web de **Ideator**: wizard conversacional, visualización del modelo de datos, especificación de API, mapa de pantallas/mockups, selección de arquitectura y descarga de la documentación final generada.
 
 ## Stack
