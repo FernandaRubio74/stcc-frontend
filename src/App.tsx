@@ -10,6 +10,7 @@ import { DataModelPage } from './pages/project/data-model/DataModelPage';
 import { ApiSpecPage } from './pages/project/api-spec/ApiSpecPage';
 import { ScreensPage } from './pages/project/screens/ScreensPage';
 import { ArchitecturePage } from './pages/project/architecture/ArchitecturePage';
+import { ReviewPage } from './pages/project/review/ReviewPage';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 
 export function App() {
@@ -80,6 +81,14 @@ export function App() {
         element={
           <ProtectedRoute>
             <ArchitecturePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:projectId/review"
+        element={
+          <ProtectedRoute>
+            <ReviewPage />
           </ProtectedRoute>
         }
       />
