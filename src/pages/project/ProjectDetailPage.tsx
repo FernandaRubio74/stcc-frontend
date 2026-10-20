@@ -82,9 +82,17 @@ export function ProjectDetailPage() {
           ← Volver a mis proyectos
         </Link>
 
-        <header>
-          <h1 className="text-2xl font-semibold text-gray-900">{project.name}</h1>
-          {project.description && <p className="text-sm text-gray-600">{project.description}</p>}
+        <header className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">{project.name}</h1>
+            {project.description && <p className="text-sm text-gray-600">{project.description}</p>}
+          </div>
+          <Link
+            to={`/projects/${projectId}/wizard`}
+            className="shrink-0 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+          >
+            Definir producto
+          </Link>
         </header>
 
         <MembersPanel

@@ -5,6 +5,7 @@ import { SsoCallbackPage } from './pages/auth/SsoCallbackPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { NewProjectPage } from './pages/dashboard/NewProjectPage';
 import { ProjectDetailPage } from './pages/project/ProjectDetailPage';
+import { WizardPage } from './pages/project/wizard/WizardPage';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 
 export function App() {
@@ -35,6 +36,14 @@ export function App() {
         element={
           <ProtectedRoute>
             <ProjectDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:projectId/wizard"
+        element={
+          <ProtectedRoute>
+            <WizardPage />
           </ProtectedRoute>
         }
       />
