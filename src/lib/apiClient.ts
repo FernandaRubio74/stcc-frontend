@@ -17,14 +17,20 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+export interface ApiFetchOptions extends RequestInit {
+  token?: string;
+}
+
+export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const { token, ...init } = options;
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
+      ...init,
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init.headers,
       },
     });
   } catch {
