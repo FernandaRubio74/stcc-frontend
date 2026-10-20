@@ -100,6 +100,12 @@ export function ProjectDetailPage() {
             >
               Modelo de datos
             </Link>
+            <Link
+              to={`/projects/${projectId}/api-spec`}
+              className="rounded-md border border-indigo-600 px-3 py-2 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50"
+            >
+              Especificacion de API
+            </Link>
           </div>
         </header>
 

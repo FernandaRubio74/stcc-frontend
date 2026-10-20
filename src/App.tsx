@@ -7,6 +7,7 @@ import { NewProjectPage } from './pages/dashboard/NewProjectPage';
 import { ProjectDetailPage } from './pages/project/ProjectDetailPage';
 import { WizardPage } from './pages/project/wizard/WizardPage';
 import { DataModelPage } from './pages/project/data-model/DataModelPage';
+import { ApiSpecPage } from './pages/project/api-spec/ApiSpecPage';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 
 export function App() {
@@ -53,6 +54,14 @@ export function App() {
         element={
           <ProtectedRoute>
             <DataModelPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:projectId/api-spec"
+        element={
+          <ProtectedRoute>
+            <ApiSpecPage />
           </ProtectedRoute>
         }
       />
