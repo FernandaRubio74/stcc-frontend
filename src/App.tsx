@@ -8,6 +8,8 @@ import { ProjectDetailPage } from './pages/project/ProjectDetailPage';
 import { WizardPage } from './pages/project/wizard/WizardPage';
 import { DataModelPage } from './pages/project/data-model/DataModelPage';
 import { ApiSpecPage } from './pages/project/api-spec/ApiSpecPage';
+import { ScreensPage } from './pages/project/screens/ScreensPage';
+import { ArchitecturePage } from './pages/project/architecture/ArchitecturePage';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 
 export function App() {
@@ -62,6 +64,22 @@ export function App() {
         element={
           <ProtectedRoute>
             <ApiSpecPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:projectId/screens"
+        element={
+          <ProtectedRoute>
+            <ScreensPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:projectId/architecture"
+        element={
+          <ProtectedRoute>
+            <ArchitecturePage />
           </ProtectedRoute>
         }
       />
