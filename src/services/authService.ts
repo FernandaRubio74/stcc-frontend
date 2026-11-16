@@ -36,6 +36,11 @@ export function login(payload: LoginPayload): Promise<AuthSession> {
   });
 }
 
+/** T-042.3 (backend) + US-043: invalida la sesion del lado del servidor al cerrar sesion. */
+export function logout(token: string): Promise<void> {
+  return apiFetch<void>('/auth/logout', { method: 'POST', token });
+}
+
 const GOOGLE_OAUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 
 // El redirect_uri debe coincidir exactamente con SSO_CALLBACK_URL del backend

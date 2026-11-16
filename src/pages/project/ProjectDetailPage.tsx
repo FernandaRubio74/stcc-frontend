@@ -7,6 +7,20 @@ import { listMembers, inviteMember, updateMemberRole, removeMember } from '../..
 import { MembersPanel } from './MembersPanel';
 import { ApiError } from '../../lib/apiClient';
 import type { ProjectRole } from '../../types/project';
+import { PageHeader } from '../../components/PageHeader';
+import { Button } from '../../components/Button';
+import { Alert } from '../../components/Alert';
+import { Spinner } from '../../components/Spinner';
+
+const STAGE_LINKS = [
+  { to: 'wizard', label: 'Definir producto' },
+  { to: 'data-model', label: 'Modelo de datos' },
+  { to: 'api-spec', label: 'Especificación de API' },
+  { to: 'screens', label: 'Mapa de pantallas' },
+  { to: 'architecture', label: 'Arquitectura' },
+  { to: 'review', label: 'Revisión final' },
+  { to: 'documents', label: 'Documentos finales' },
+];
 
 // STCC-66: vista de detalle y gestion de miembros.
 export function ProjectDetailPage() {
@@ -55,17 +69,19 @@ export function ProjectDetailPage() {
   });
 
   if (projectQuery.isPending || membersQuery.isPending) {
-    return <p className="p-8 text-sm text-gray-500">Cargando…</p>;
+    return (
+      <div className="p-8">
+        <Spinner />
+      </div>
+    );
   }
 
   if (projectQuery.isError || !projectQuery.data) {
     return (
       <div className="space-y-3 p-8">
-        <p role="alert" className="text-sm text-red-700">
-          {projectQuery.error instanceof ApiError
-            ? projectQuery.error.message
-            : 'No se pudo cargar el proyecto'}
-        </p>
+        <Alert onRetry={() => projectQuery.refetch()}>
+          {projectQuery.error instanceof ApiError ? projectQuery.error.message : 'No se pudo cargar el proyecto'}
+        </Alert>
         <Link to="/dashboard" className="text-sm text-indigo-600 hover:underline">
           Volver a mis proyectos
         </Link>
@@ -82,67 +98,30 @@ export function ProjectDetailPage() {
           ← Volver a mis proyectos
         </Link>
 
-        <header className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">{project.name}</h1>
-            {project.description && <p className="text-sm text-gray-600">{project.description}</p>}
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <Link
-              to={`/projects/${projectId}/wizard`}
-              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
-            >
-              Definir producto
+        <PageHeader
+          title={project.name}
+          subtitle={project.description ?? undefined}
+          actions={STAGE_LINKS.map((stage, index) => (
+            <Link key={stage.to} to={`/projects/${projectId}/${stage.to}`}>
+              <Button variant={index === 0 ? 'primary' : 'secondary'}>{stage.label}</Button>
             </Link>
-            <Link
-              to={`/projects/${projectId}/data-model`}
-              className="rounded-md border border-indigo-600 px-3 py-2 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50"
-            >
-              Modelo de datos
-            </Link>
-            <Link
-              to={`/projects/${projectId}/api-spec`}
-              className="rounded-md border border-indigo-600 px-3 py-2 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50"
-            >
-              Especificacion de API
-            </Link>
-            <Link
-              to={`/projects/${projectId}/screens`}
-              className="rounded-md border border-indigo-600 px-3 py-2 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50"
-            >
-              Mapa de pantallas
-            </Link>
-            <Link
-              to={`/projects/${projectId}/architecture`}
-              className="rounded-md border border-indigo-600 px-3 py-2 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50"
-            >
-              Arquitectura
-            </Link>
-            <Link
-              to={`/projects/${projectId}/review`}
-              className="rounded-md border border-indigo-600 px-3 py-2 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50"
-            >
-              Revisión final
-            </Link>
-            <Link
-              to={`/projects/${projectId}/documents`}
-              className="rounded-md border border-indigo-600 px-3 py-2 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50"
-            >
-              Documentos finales
-            </Link>
-          </div>
-        </header>
-
-        <MembersPanel
-          members={membersQuery.data ?? []}
-          currentRole={project.role}
-          currentUserId={user?.id ?? ''}
-          onInvite={(email, role) => inviteMutation.mutate({ email, role })}
-          onChangeRole={(memberId, role) => roleMutation.mutate({ memberId, role })}
-          onRemove={(memberId) => removeMutation.mutate(memberId)}
-          isInviting={inviteMutation.isPending}
-          inviteError={inviteError}
+          ))}
         />
+
+        {membersQuery.isError ? (
+          <Alert onRetry={() => membersQuery.refetch()}>No se pudo cargar la lista de miembros</Alert>
+        ) : (
+          <MembersPanel
+            members={membersQuery.data ?? []}
+            currentRole={project.role}
+            currentUserId={user?.id ?? ''}
+            onInvite={(email, role) => inviteMutation.mutate({ email, role })}
+            onChangeRole={(memberId, role) => roleMutation.mutate({ memberId, role })}
+            onRemove={(memberId) => removeMutation.mutate(memberId)}
+            isInviting={inviteMutation.isPending}
+            inviteError={inviteError}
+          />
+        )}
       </div>
     </div>
   );
