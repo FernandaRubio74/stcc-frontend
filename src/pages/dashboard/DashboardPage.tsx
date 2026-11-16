@@ -3,6 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../hooks/useAuth';
 import { listProjects } from '../../services/projectsService';
 import { ApiError } from '../../lib/apiClient';
+import { PageHeader } from '../../components/PageHeader';
+import { Button } from '../../components/Button';
+import { Alert } from '../../components/Alert';
+import { EmptyState } from '../../components/EmptyState';
+import { Spinner } from '../../components/Spinner';
 
 // STCC-65: listado de proyectos donde el usuario es miembro.
 export function DashboardPage() {
@@ -14,52 +19,54 @@ export function DashboardPage() {
     isPending,
     isError,
     error,
+    refetch,
   } = useQuery({
     queryKey: ['projects'],
     queryFn: () => listProjects(token as string),
     enabled: Boolean(token),
   });
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     navigate('/login', { replace: true });
   }
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="mx-auto max-w-3xl space-y-6">
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Mis proyectos</h1>
-            <p className="text-sm text-gray-600">{user?.fullName}</p>
-          </div>
-          <div className="flex gap-2">
-            <Link
-              to="/projects/new"
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
-            >
-              Nuevo proyecto
-            </Link>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Cerrar sesión
-            </button>
-          </div>
-        </header>
+        <PageHeader
+          title="Mis proyectos"
+          subtitle={user?.fullName}
+          actions={
+            <>
+              <Link to="/projects/new">
+                <Button>Nuevo proyecto</Button>
+              </Link>
+              <Button variant="secondary" onClick={handleLogout}>
+                Cerrar sesión
+              </Button>
+            </>
+          }
+        />
 
-        {isPending && <p className="text-sm text-gray-500">Cargando proyectos…</p>}
+        {isPending && <Spinner label="Cargando proyectos…" />}
 
         {isError && (
-          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <Alert onRetry={() => refetch()}>
             {error instanceof ApiError ? error.message : 'No se pudieron cargar los proyectos'}
-          </p>
+          </Alert>
         )}
 
         {projects && projects.length === 0 && (
-          <p className="text-sm text-gray-500">Todavía no participás en ningún proyecto.</p>
+          <EmptyState
+            title="Todavía no participás en ningún proyecto"
+            description="Creá uno nuevo para empezar a definirlo con Ideator."
+            action={
+              <Link to="/projects/new">
+                <Button>Crear mi primer proyecto</Button>
+              </Link>
+            }
+          />
         )}
 
         {projects && projects.length > 0 && (

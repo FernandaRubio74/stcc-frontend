@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { login, register, getGoogleSsoUrl } from '../../src/services/authService';
+import { login, logout, register, getGoogleSsoUrl } from '../../src/services/authService';
 import { ApiError } from '../../src/lib/apiClient';
 
 function mockFetchOnce(status: number, body: unknown) {
@@ -54,6 +54,20 @@ describe('authService', () => {
     await expect(
       register({ email: 'a@b.com', password: '123', fullName: 'A' }),
     ).rejects.toMatchObject({ message: 'Datos invalidos', status: 422, details });
+  });
+
+  it('logout envía POST /auth/logout con el token de la sesion actual', async () => {
+    mockFetchOnce(204, null);
+
+    await logout('jwt-token');
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/auth/logout'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+    const headers = (fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0][1]
+      ?.headers as Record<string, string>;
+    expect(headers.Authorization).toBe('Bearer jwt-token');
   });
 
   it('getGoogleSsoUrl construye la URL de autorización de Google con los parámetros esperados', () => {
