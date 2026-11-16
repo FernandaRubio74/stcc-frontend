@@ -6,19 +6,36 @@ Interfaz web de **Ideator**: wizard conversacional, visualización del modelo de
 
 ## Stack
 
+Confirmado y en uso:
+
 - **Framework:** React 18 + Vite
 - **Lenguaje:** TypeScript
 - **Estilos:** Tailwind CSS
-- **Estado remoto/cache:** React Query (o SWR)
-- **Renderizado de diagramas:** Mermaid.js (ER diagrams, mapas de navegación)
-- **Testing:** Vitest + React Testing Library + Playwright (E2E)
+- **Routing:** React Router
+- **Estado remoto/cache:** TanStack Query (React Query)
+- **Renderizado de diagramas:** Mermaid.js (diagrama ER, mapa de navegación de pantallas)
+- **Markdown:** `react-markdown` + `remark-gfm` (vista previa de los documentos finales)
+- **Testing:** Vitest + React Testing Library (solo unitario/componentes — no hay suite E2E de frontend; el E2E del producto vive en `stcc-backend`, contra el servidor real)
 
-> Stack propuesto por defecto. Ajustar según la arquitectura definitiva confirmada en `EPIC-09`.
+## Módulos de la UI
+
+| Área (`src/pages/`) | Qué hace | Historias |
+|---|---|---|
+| `auth` | Registro, login, callback de SSO | US-011 |
+| `dashboard` | Listado de proyectos | US-012 |
+| `project/wizard` | Wizard conversacional de definición | US-018 |
+| `project/data-model` | Visualizador y editor inline del diagrama ER | US-022 |
+| `project/api-spec` | Vista de documentación de API tipo Swagger | US-025 |
+| `project/screens` | Visor del mapa de pantallas (mockups clickeables) | US-030 |
+| `project/architecture` | Selector comparativo de arquitectura | US-030 |
+| `project/review` | Checklist de revisión final por etapa | US-033 |
+| `project/documents` | Vista previa, descarga individual/conjunta e historial de versiones | US-037 |
+| `components/` | Sistema de diseño compartido (Button, Alert, Badge, EmptyState, Spinner, PageHeader) | US-043 |
 
 ## Requisitos previos
 
 - Node.js 20 o superior
-- Backend de Ideator corriendo localmente (ver repo `ideator-backend`)
+- Backend de Ideator corriendo localmente (ver `stcc-backend`, incluye el `docker-compose.yml` que levanta ambos)
 
 ## Instalación
 
@@ -37,6 +54,13 @@ npm run dev
 
 La aplicación queda disponible en `http://localhost:5173`.
 
+## Levantar todo con Docker
+
+El `docker-compose.yml` que levanta base de datos + backend + frontend con un
+solo comando vive en `stcc-backend` (requiere los dos repos clonados como
+carpetas hermanas). Ver la sección correspondiente en
+[el README del backend](https://github.com/FernandaRubio74/stcc-backend#levantar-el-entorno-completo-desde-cero-docker).
+
 ## Variables de entorno
 
 | Variable | Descripción | Ejemplo |
@@ -54,8 +78,7 @@ Nunca commitear el archivo `.env`. Usar siempre `.env.example` como plantilla si
 | `npm run dev` | Levanta el servidor de desarrollo con hot reload |
 | `npm run build` | Genera el build de producción |
 | `npm run preview` | Sirve localmente el build de producción |
-| `npm test` | Ejecuta pruebas unitarias/componentes |
-| `npm run test:e2e` | Ejecuta pruebas end-to-end (Playwright) |
+| `npm test` | Ejecuta pruebas unitarias/componentes (Vitest) |
 | `npm run lint` | Ejecuta el linter |
 | `npm run format` | Formatea el código |
 
