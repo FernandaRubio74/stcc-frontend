@@ -11,6 +11,7 @@ import { ApiSpecPage } from './pages/project/api-spec/ApiSpecPage';
 import { ScreensPage } from './pages/project/screens/ScreensPage';
 import { ArchitecturePage } from './pages/project/architecture/ArchitecturePage';
 import { ReviewPage } from './pages/project/review/ReviewPage';
+import { DocumentsPage } from './pages/project/documents/DocumentsPage';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 
 export function App() {
@@ -89,6 +90,14 @@ export function App() {
         element={
           <ProtectedRoute>
             <ReviewPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:projectId/documents"
+        element={
+          <ProtectedRoute>
+            <DocumentsPage />
           </ProtectedRoute>
         }
       />
