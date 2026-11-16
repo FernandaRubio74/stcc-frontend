@@ -19,6 +19,7 @@ const STAGE_LINKS = [
   { to: 'screens', label: 'Mapa de pantallas' },
   { to: 'architecture', label: 'Arquitectura' },
   { to: 'review', label: 'Revisión final' },
+  { to: 'documents', label: 'Documentos finales' },
 ];
 
 // STCC-66: vista de detalle y gestion de miembros.
