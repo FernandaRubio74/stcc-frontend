@@ -1,6 +1,9 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { GoogleAuthButton } from './GoogleAuthButton';
 import { validateEmail, validatePassword } from './validation';
+import { Input } from '../../components/Input';
+import { Button } from '../../components/Button';
+import { Alert } from '../../components/Alert';
 
 export interface LoginFormValues {
   email: string;
@@ -42,58 +45,38 @@ export function LoginForm({ onSubmit, isSubmitting, formError, onGoogleClick }: 
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-4">
-      {formError && (
-        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-          {formError}
-        </p>
-      )}
+      {formError && <Alert>{formError}</Alert>}
 
-      <div>
-        <label htmlFor="login-email" className="block text-sm font-medium text-gray-700">
-          Email
-        </label>
-        <input
-          id="login-email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          value={values.email}
-          onChange={handleChange('email')}
-          aria-invalid={Boolean(fieldErrors.email)}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
-        />
-        {fieldErrors.email && <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>}
-      </div>
+      <Input
+        id="login-email"
+        name="email"
+        type="email"
+        label="Email"
+        autoComplete="email"
+        value={values.email}
+        onChange={handleChange('email')}
+        error={fieldErrors.email}
+      />
 
-      <div>
-        <label htmlFor="login-password" className="block text-sm font-medium text-gray-700">
-          Contraseña
-        </label>
-        <input
-          id="login-password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          value={values.password}
-          onChange={handleChange('password')}
-          aria-invalid={Boolean(fieldErrors.password)}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
-        />
-        {fieldErrors.password && <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>}
-      </div>
+      <Input
+        id="login-password"
+        name="password"
+        type="password"
+        label="Contraseña"
+        autoComplete="current-password"
+        value={values.password}
+        onChange={handleChange('password')}
+        error={fieldErrors.password}
+      />
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {isSubmitting ? 'Iniciando sesión…' : 'Iniciar sesión'}
-      </button>
+      <Button type="submit" className="w-full" loading={isSubmitting}>
+        Iniciar sesión
+      </Button>
 
-      <div className="flex items-center gap-3 text-xs text-gray-400">
-        <span className="h-px flex-1 bg-gray-200" />
+      <div className="flex items-center gap-3 text-label-sm text-on-surface-variant">
+        <span className="h-px flex-1 bg-outline-variant/40" />
         o
-        <span className="h-px flex-1 bg-gray-200" />
+        <span className="h-px flex-1 bg-outline-variant/40" />
       </div>
 
       <GoogleAuthButton onClick={onGoogleClick} label="Iniciar sesión con Google" />

@@ -1,7 +1,8 @@
-import { Link, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
+import { usePageTitle } from '../../../hooks/usePageTitle';
 import { getProject } from '../../../services/projectsService';
 import {
   getArchitecture,
@@ -11,14 +12,27 @@ import {
 } from '../../../services/architectureService';
 import { ApiError } from '../../../lib/apiClient';
 import { ArchitectureSelector } from './ArchitectureSelector';
+import { AppShell } from '../../../components/AppShell';
+import { BackLink } from '../../../components/BackLink';
+import { PageHeader } from '../../../components/PageHeader';
+import { Alert } from '../../../components/Alert';
+import { Button } from '../../../components/Button';
+import { Skeleton } from '../../../components/Skeleton';
+import { Icon } from '../../../components/icons';
+import { useToast } from '../../../components/Toast';
+import { StageAssistant } from '../../../components/StageAssistant';
+import { getNextStagePath } from '../projectStages';
 
 // STCC-152 (US-030): pagina de seleccion de arquitectura — vista
 // comparativa de las 5 opciones del catalogo (US-028/US-029), con la
 // recomendacion de la IA resaltada y el flujo de aceptarla o elegir otra.
 export function ArchitecturePage() {
+  usePageTitle('Arquitectura');
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const { token } = useAuth();
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [recommendError, setRecommendError] = useState<string | null>(null);
   const [selectError, setSelectError] = useState<string | null>(null);
 
@@ -47,11 +61,18 @@ export function ArchitecturePage() {
     queryClient.invalidateQueries({ queryKey: architectureQueryKey });
   }
 
+  async function handleRefine(instruction: string) {
+    await recommendArchitecture(projectId as string, token as string, instruction);
+    invalidate();
+    showToast('Recomendación actualizada');
+  }
+
   const recommendMutation = useMutation({
     mutationFn: () => recommendArchitecture(projectId as string, token as string),
     onSuccess: () => {
       setRecommendError(null);
       invalidate();
+      showToast('Arquitectura recomendada');
     },
     onError: (error: unknown) => {
       setRecommendError(error instanceof ApiError ? error.message : 'Ocurrió un error inesperado');
@@ -59,10 +80,14 @@ export function ArchitecturePage() {
   });
 
   const selectMutation = useMutation({
-    mutationFn: (architectureId: string) => selectArchitecture(projectId as string, architectureId, token as string),
+    mutationFn: (architectureId: string) =>
+      selectArchitecture(projectId as string, architectureId, token as string),
     onSuccess: () => {
       setSelectError(null);
       invalidate();
+      showToast('Arquitectura confirmada');
+      const nextPath = getNextStagePath(projectId as string, 'architecture');
+      if (nextPath) navigate(nextPath);
     },
     onError: (error: unknown) => {
       setSelectError(error instanceof ApiError ? error.message : 'Ocurrió un error inesperado');
@@ -70,7 +95,12 @@ export function ArchitecturePage() {
   });
 
   if (projectQuery.isPending || catalogQuery.isPending || architectureQuery.isPending) {
-    return <p className="p-8 text-sm text-gray-500">Cargando…</p>;
+    return (
+      <AppShell>
+        <Skeleton variant="text" className="w-48" />
+        <Skeleton variant="block" />
+      </AppShell>
+    );
   }
 
   if (
@@ -82,14 +112,18 @@ export function ArchitecturePage() {
     !architectureQuery.data
   ) {
     return (
-      <div className="space-y-3 p-8">
-        <p role="alert" className="text-sm text-red-700">
+      <AppShell>
+        <Alert
+          onRetry={() => {
+            projectQuery.refetch();
+            catalogQuery.refetch();
+            architectureQuery.refetch();
+          }}
+        >
           No se pudo cargar la seleccion de arquitectura
-        </p>
-        <Link to={`/projects/${projectId}`} className="text-sm text-indigo-600 hover:underline">
-          Volver al proyecto
-        </Link>
-      </div>
+        </Alert>
+        <BackLink to={`/projects/${projectId}`}>Volver al proyecto</BackLink>
+      </AppShell>
     );
   }
 
@@ -99,55 +133,49 @@ export function ArchitecturePage() {
   const state = architectureQuery.data;
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <Link to={`/projects/${projectId}`} className="text-sm text-indigo-600 hover:underline">
-          ← Volver al proyecto
-        </Link>
+    <AppShell breadcrumb={projectQuery.data.name}>
+      <BackLink to={`/projects/${projectId}`}>Volver al proyecto</BackLink>
 
-        <header className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-semibold text-gray-900">Arquitectura tecnológica</h1>
-          {canRecommend && (
-            <button
-              type="button"
+      <PageHeader
+        title="Arquitectura tecnológica"
+        actions={
+          canRecommend && (
+            <Button
               onClick={() => recommendMutation.mutate()}
-              disabled={recommendMutation.isPending}
-              className="shrink-0 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              loading={recommendMutation.isPending}
             >
-              {recommendMutation.isPending
-                ? 'Recomendando…'
-                : state.recommendedId
-                  ? 'Volver a recomendar'
-                  : 'Recomendar con IA'}
-            </button>
-          )}
-        </header>
+              <Icon name="auto_awesome" className="text-[16px]" />
+              {state.recommendedId ? 'Volver a recomendar' : 'Recomendar con IA'}
+            </Button>
+          )
+        }
+      />
 
-        {recommendError && (
-          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            {recommendError}
-          </p>
-        )}
-        {selectError && (
-          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            {selectError}
-          </p>
-        )}
+      {recommendError && <Alert>{recommendError}</Alert>}
+      {selectError && <Alert>{selectError}</Alert>}
 
-        {state.selectedId && (
-          <p className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-            ✅ Arquitectura confirmada: <strong>{state.selectedId}</strong>
-          </p>
-        )}
+      {state.selectedId && (
+        <div className="flex items-center gap-2 rounded-lg bg-tertiary-container/20 px-space-md py-space-sm text-label-md text-tertiary">
+          <Icon name="verified" className="text-[18px]" />
+          Arquitectura confirmada: <span className="font-mono text-code-sm">{state.selectedId}</span>
+        </div>
+      )}
 
-        <ArchitectureSelector
-          catalog={catalogQuery.data}
-          state={state}
-          canSelect={canSelect}
-          onSelect={(architectureId) => selectMutation.mutate(architectureId)}
-          isSelecting={selectMutation.isPending}
+      {canRecommend && !state.selectedId && (
+        <StageAssistant
+          id="architecture"
+          placeholder='Ej: "Prefiero algo lo más simple posible, sin microservicios"'
+          onSubmit={handleRefine}
         />
-      </div>
-    </div>
+      )}
+
+      <ArchitectureSelector
+        catalog={catalogQuery.data}
+        state={state}
+        canSelect={canSelect}
+        onSelect={(architectureId) => selectMutation.mutate(architectureId)}
+        isSelecting={selectMutation.isPending}
+      />
+    </AppShell>
   );
 }

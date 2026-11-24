@@ -8,12 +8,21 @@ export interface ApiValidationIssue {
 export class ApiError extends Error {
   status: number;
   details?: ApiValidationIssue[];
+  /** Solo presente en el 409 de cobertura de la etapa de pruebas (ver
+   * testing.controller.js): requisitos/endpoints/pantallas sin casos. */
+  gaps?: { missingRequirements: string[]; missingEndpoints: string[]; missingScreens: string[] };
 
-  constructor(message: string, status: number, details?: ApiValidationIssue[]) {
+  constructor(
+    message: string,
+    status: number,
+    details?: ApiValidationIssue[],
+    gaps?: ApiError['gaps'],
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.details = details;
+    this.gaps = gaps;
   }
 }
 
@@ -41,7 +50,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 
   if (!response.ok) {
     const message = body?.error || 'Ocurrió un error inesperado';
-    throw new ApiError(message, response.status, body?.details);
+    throw new ApiError(message, response.status, body?.details, body?.gaps);
   }
 
   return body as T;

@@ -48,9 +48,9 @@ describe('LoginForm', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Credenciales invalidas');
   });
 
-  it('deshabilita el submit y cambia el texto mientras isSubmitting es true', () => {
+  it('deshabilita el submit mientras isSubmitting es true (Button muestra "Cargando…")', () => {
     render(<LoginForm onSubmit={vi.fn()} isSubmitting formError={null} onGoogleClick={vi.fn()} />);
-    expect(screen.getByRole('button', { name: /iniciando sesión/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /cargando/i })).toBeDisabled();
   });
 
   it('invoca onGoogleClick al hacer click en el botón de Google', async () => {

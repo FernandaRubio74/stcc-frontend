@@ -39,6 +39,11 @@ export interface DefinitionSummary {
 export interface DefinitionState extends DefinitionSummary {
   messages: DefinitionMessage[];
   blockingQuestions: BlockingQuestion[];
+  /** Respuestas de un click propuestas por el agente de sugerencias (separado
+   * del que conduce la conversacion) - vacio si todavia no hay ninguna. */
+  suggestions: string[];
+  /** Si la etapa actual ya esta completa (misma regla que usa advanceStage). */
+  stageComplete: boolean;
 }
 
 export interface PostDefinitionMessageResult {
@@ -47,4 +52,12 @@ export interface PostDefinitionMessageResult {
   stageComplete: boolean;
   blockingQuestions: string[];
   definition: DefinitionSummary;
+  suggestions: string[];
+}
+
+export interface AdvanceStageResult extends DefinitionSummary {
+  /** Sugerencias para responder al anuncio de cambio de etapa (el backend
+   * tambien persiste ese anuncio como mensaje del asistente en la etapa
+   * nueva - llega al refetch de la query, no en esta respuesta). */
+  suggestions: string[];
 }

@@ -4,8 +4,10 @@ import remarkGfm from 'remark-gfm';
 import mermaid from 'mermaid';
 import type { GeneratedDocument } from '../../../types/documents';
 import { DOCUMENT_KIND_LABELS } from '../../../types/documents';
+import { Button } from '../../../components/Button';
+import { ensureMermaidInitialized } from '../../../lib/mermaidTheme';
 
-mermaid.initialize({ startOnLoad: false });
+ensureMermaidInitialized();
 
 /**
  * Los documentos generados traen los diagramas como bloques ```mermaid (el
@@ -48,24 +50,23 @@ interface Props {
 // queries ni de rutas.
 export function DocumentViewer({ document, onDownload }: Props) {
   return (
-    <section className="space-y-4 rounded-md border border-gray-200 bg-white p-4">
+    <section className="space-y-4 rounded-card border border-outline-variant/30 bg-surface-container-low p-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">{DOCUMENT_KIND_LABELS[document.kind]}</h2>
-          <p className="text-xs text-gray-500">
-            Versión {document.versionNumber} · generado el {new Date(document.createdAt).toLocaleString()}
+          <h2 className="text-headline-md text-on-surface">
+            {DOCUMENT_KIND_LABELS[document.kind]}
+          </h2>
+          <p className="text-label-sm text-outline">
+            Versión {document.versionNumber} · generado el{' '}
+            {new Date(document.createdAt).toLocaleString()}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onDownload}
-          className="rounded-md border border-indigo-600 px-3 py-2 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50"
-        >
+        <Button variant="secondary" size="sm" onClick={onDownload}>
           Descargar .md
-        </button>
+        </Button>
       </header>
 
-      <article className="prose prose-sm max-w-none overflow-x-auto">
+      <article className="prose prose-sm prose-invert max-w-none overflow-x-auto prose-a:text-primary prose-code:text-secondary">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{

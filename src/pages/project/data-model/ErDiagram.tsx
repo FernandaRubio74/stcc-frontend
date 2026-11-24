@@ -1,13 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
-
-let initialized = false;
-function ensureMermaidInitialized() {
-  if (!initialized) {
-    mermaid.initialize({ startOnLoad: false });
-    initialized = true;
-  }
-}
+import { ensureMermaidInitialized } from '../../../lib/mermaidTheme';
 
 interface ErDiagramProps {
   diagram: string | null;
@@ -44,17 +37,21 @@ export function ErDiagram({ diagram }: ErDiagramProps) {
   }, [diagram]);
 
   if (!diagram) {
-    return <p className="text-sm text-gray-500">Todavía no hay un diagrama generado.</p>;
+    return <p className="text-body-sm text-on-surface-variant">Todavía no hay un diagrama generado.</p>;
   }
 
   return (
     <div>
       {error && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-body-sm text-danger">
           {error}
         </p>
       )}
-      <div ref={containerRef} data-testid="er-diagram" className="overflow-x-auto" />
+      <div
+        ref={containerRef}
+        data-testid="er-diagram"
+        className="overflow-x-auto rounded-card border border-outline-variant/30 bg-surface-container-low p-4"
+      />
     </div>
   );
 }

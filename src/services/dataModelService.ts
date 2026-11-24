@@ -12,6 +12,18 @@ export function generateDataModel(projectId: string, token: string): Promise<Dat
   });
 }
 
+export function refineDataModel(
+  projectId: string,
+  instruction: string,
+  token: string,
+): Promise<DataModelVersionView> {
+  return apiFetch<DataModelVersionView>(`/projects/${projectId}/data-model/refine`, {
+    method: 'POST',
+    body: JSON.stringify({ instruction }),
+    token,
+  });
+}
+
 export function updateDataModelEntities(
   projectId: string,
   entities: Entity[],

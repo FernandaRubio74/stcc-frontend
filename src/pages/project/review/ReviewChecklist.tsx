@@ -1,6 +1,14 @@
-import type { BlockingQuestion, Inconsistency, ReviewSummary, StageKey } from '../../../types/review';
+import type {
+  BlockingQuestion,
+  Inconsistency,
+  ReviewSummary,
+  StageKey,
+} from '../../../types/review';
+import { Badge, type BadgeTone } from '../../../components/Badge';
+import { Button } from '../../../components/Button';
+import { Alert } from '../../../components/Alert';
 
-const STAGE_ORDER: StageKey[] = ['definition', 'dataModel', 'apiSpec', 'screens', 'architecture'];
+const STAGE_ORDER: StageKey[] = ['definition', 'dataModel', 'apiSpec', 'screens', 'architecture', 'testing'];
 
 const STAGE_LABELS: Record<StageKey, string> = {
   definition: 'Definición del producto',
@@ -8,6 +16,7 @@ const STAGE_LABELS: Record<StageKey, string> = {
   apiSpec: 'Especificación de API',
   screens: 'Mapa de pantallas',
   architecture: 'Arquitectura',
+  testing: 'Pruebas',
 };
 
 // Los ids de etapa que usa el motor de consistencia (US-031) son kebab-case
@@ -20,9 +29,16 @@ const RULE_STAGE_TO_KEY: Record<string, StageKey> = {
   screens: 'screens',
 };
 
-function stagesInConflict(inconsistencies: Inconsistency[]): Set<StageKey> {
+// Un hallazgo sin `status` viene de una respuesta vieja del backend: se
+// trata como error, que es como se comportaba antes de que existieran los
+// estados.
+function isBlocking(issue: Inconsistency): boolean {
+  return issue.status !== 'advertencia';
+}
+
+function stagesWithFindings(inconsistencies: Inconsistency[], predicate: (issue: Inconsistency) => boolean): Set<StageKey> {
   const set = new Set<StageKey>();
-  inconsistencies.forEach((issue) => {
+  inconsistencies.filter(predicate).forEach((issue) => {
     issue.stages.forEach((stage) => {
       const key = RULE_STAGE_TO_KEY[stage];
       if (key) set.add(key);
@@ -31,17 +47,47 @@ function stagesInConflict(inconsistencies: Inconsistency[]): Set<StageKey> {
   return set;
 }
 
-type StageVisualStatus = 'complete' | 'pending' | 'conflict';
-
-function statusFor(stageKey: StageKey, complete: boolean, conflicted: Set<StageKey>): StageVisualStatus {
-  if (conflicted.has(stageKey)) return 'conflict';
-  return complete ? 'complete' : 'pending';
+// Todos los conflictos que afectan una etapa, con el id de regla ("data-model",
+// no "dataModel") que les corresponde a ESA etapa - lo necesita
+// buildCombinedConflictInstruction para redactar la instruccion en el lugar
+// correcto (ver conflictInstructions.ts: el mensaje cambia segun se vaya a
+// Definicion o a la etapa que todavia no refleja el conflicto).
+function issuesForStage(inconsistencies: Inconsistency[], stageKey: StageKey): { issue: Inconsistency; ruleStage: string }[] {
+  const result: { issue: Inconsistency; ruleStage: string }[] = [];
+  inconsistencies.forEach((issue) => {
+    issue.stages.forEach((ruleStage) => {
+      if (RULE_STAGE_TO_KEY[ruleStage] === stageKey) result.push({ issue, ruleStage });
+    });
+  });
+  return result;
 }
 
-const STATUS_BADGE: Record<StageVisualStatus, { label: string; className: string }> = {
-  complete: { label: '✅ Completo', className: 'bg-green-100 text-green-700' },
-  pending: { label: '⏳ Pendiente', className: 'bg-gray-100 text-gray-600' },
-  conflict: { label: '⚠️ Con conflicto', className: 'bg-red-100 text-red-700' },
+type StageVisualStatus = 'complete' | 'pending' | 'warning' | 'conflict';
+
+/**
+ * Regla A/D de la revision transversal: una etapa sin generar es
+ * "pendiente de generar" (estado neutro), nunca un conflicto. Y una
+ * advertencia es distinta de un error: no bloquea la generacion final.
+ * El orden importa: primero lo que falta generar, despues el estado de
+ * consistencia de lo que SI existe.
+ */
+function statusFor(
+  stageKey: StageKey,
+  complete: boolean,
+  conflicted: Set<StageKey>,
+  warned: Set<StageKey>,
+): StageVisualStatus {
+  if (!complete) return 'pending';
+  if (conflicted.has(stageKey)) return 'conflict';
+  if (warned.has(stageKey)) return 'warning';
+  return 'complete';
+}
+
+const STATUS_BADGE: Record<StageVisualStatus, { label: string; tone: BadgeTone }> = {
+  complete: { label: 'Completo', tone: 'success' },
+  pending: { label: 'Pendiente de generar', tone: 'neutral' },
+  warning: { label: 'Con aviso', tone: 'warning' },
+  conflict: { label: 'Con conflicto', tone: 'danger' },
 };
 
 interface Props {
@@ -49,6 +95,10 @@ interface Props {
   inconsistencies: Inconsistency[];
   blockingQuestions: BlockingQuestion[];
   onNavigateToStage: (stage: StageKey) => void;
+  /** Navegar a resolver UN conflicto puntual: la etapa destino abre con el chat ya cargado con como solucionarlo. */
+  onNavigateToConflict: (stage: StageKey, issue: Inconsistency, ruleStage: string) => void;
+  /** Boton "Resolver" de la etapa: combina TODOS los conflictos de esa etapa en una sola instruccion. */
+  onResolveStage: (stage: StageKey, issues: { issue: Inconsistency; ruleStage: string }[]) => void;
   readyToGenerate: boolean;
   onGenerateClick: () => void;
   isGenerating: boolean;
@@ -65,83 +115,122 @@ export function ReviewChecklist({
   inconsistencies,
   blockingQuestions,
   onNavigateToStage,
+  onNavigateToConflict,
+  onResolveStage,
   readyToGenerate,
   onGenerateClick,
   isGenerating,
 }: Props) {
-  const conflicted = stagesInConflict(inconsistencies);
+  const conflicted = stagesWithFindings(inconsistencies, isBlocking);
+  const warned = stagesWithFindings(inconsistencies, (issue) => !isBlocking(issue));
+  const pendingStageLabels = STAGE_ORDER.filter((stageKey) => !stages[stageKey]?.complete).map(
+    (stageKey) => STAGE_LABELS[stageKey]
+  );
 
   return (
     <div className="space-y-6">
-      <ul className="divide-y divide-gray-200 rounded-md border border-gray-200 bg-white">
+      <ul className="divide-y divide-outline-variant/30 rounded-card border border-outline-variant/30 bg-surface-container-low">
         {STAGE_ORDER.map((stageKey) => {
-          const status = statusFor(stageKey, stages[stageKey]?.complete ?? false, conflicted);
+          const status = statusFor(stageKey, stages[stageKey]?.complete ?? false, conflicted, warned);
           const badge = STATUS_BADGE[status];
+          const stageIssues =
+            status === 'conflict' || status === 'warning' ? issuesForStage(inconsistencies, stageKey) : [];
           return (
-            <li key={stageKey}>
+            <li key={stageKey} className="flex items-center gap-2 p-3 hover:bg-surface-container-high">
               <button
                 type="button"
                 onClick={() => onNavigateToStage(stageKey)}
-                className="flex w-full items-center justify-between gap-3 p-3 text-left hover:bg-gray-50"
+                className="flex flex-1 items-center justify-between gap-3 text-left"
               >
-                <span className="text-sm font-medium text-gray-900">{STAGE_LABELS[stageKey]}</span>
-                <span className={`rounded px-2 py-0.5 text-xs font-medium ${badge.className}`}>{badge.label}</span>
+                <span className="text-body-sm font-medium text-on-surface">
+                  {STAGE_LABELS[stageKey]}
+                </span>
+                <Badge tone={badge.tone}>{badge.label}</Badge>
               </button>
+              {stageIssues.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onResolveStage(stageKey, stageIssues);
+                  }}
+                  className="shrink-0"
+                >
+                  Resolver
+                </Button>
+              )}
             </li>
           );
         })}
       </ul>
 
       {blockingQuestions.length > 0 && (
-        <section className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-4">
-          <h3 className="text-sm font-semibold text-amber-900">Preguntas bloqueantes sin resolver</h3>
-          <ul className="space-y-1">
+        <Alert tone="warning">
+          <h3 className="font-semibold">Preguntas bloqueantes sin resolver</h3>
+          <ul className="mt-1 space-y-1">
             {blockingQuestions.map((question) => (
-              <li key={question.id} className="text-sm text-amber-800">
-                {question.question}
-              </li>
+              <li key={question.id}>{question.question}</li>
             ))}
           </ul>
-        </section>
+        </Alert>
       )}
 
-      {inconsistencies.length > 0 && (
-        <section className="space-y-2 rounded-md border border-red-200 bg-red-50 p-4">
-          <h3 className="text-sm font-semibold text-red-900">Inconsistencias entre etapas</h3>
-          <ul className="space-y-2">
-            {inconsistencies.map((issue, i) => (
-              <li key={i} className="text-sm text-red-800">
-                <p>{issue.message}</p>
-                <div className="mt-1 flex gap-2">
-                  {issue.stages.map((stage) => {
-                    const key = RULE_STAGE_TO_KEY[stage];
-                    if (!key) return null;
-                    return (
-                      <button
-                        key={stage}
-                        type="button"
-                        onClick={() => onNavigateToStage(key)}
-                        className="text-xs font-medium text-red-700 underline hover:text-red-900"
-                      >
-                        Ir a {STAGE_LABELS[key]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
+      {/* Errores y avisos van separados: un aviso no bloquea la generacion
+          final, y mezclarlos hacia que todo pareciera igual de grave. */}
+      {([
+        { tone: 'danger' as const, title: 'Inconsistencias entre etapas', items: inconsistencies.filter(isBlocking) },
+        {
+          tone: 'warning' as const,
+          title: 'Avisos de consistencia (no bloquean la generación)',
+          items: inconsistencies.filter((issue) => !isBlocking(issue)),
+        },
+      ]).map(
+        (group) =>
+          group.items.length > 0 && (
+            <Alert key={group.tone} tone={group.tone}>
+              <h3 className="font-semibold">{group.title}</h3>
+              <ul className="mt-1 space-y-2">
+                {group.items.map((issue, i) => (
+                  <li key={issue.id ?? i}>
+                    <p>{issue.message}</p>
+                    {issue.suggestion && (
+                      <p className="mt-0.5 text-label-sm text-on-surface-variant">{issue.suggestion}</p>
+                    )}
+                    <div className="mt-1 flex gap-2">
+                      {issue.stages.map((stage) => {
+                        const key = RULE_STAGE_TO_KEY[stage];
+                        if (!key) return null;
+                        return (
+                          <button
+                            key={stage}
+                            type="button"
+                            onClick={() => onNavigateToConflict(key, issue, stage)}
+                            className="text-label-sm font-medium underline hover:no-underline"
+                          >
+                            Ir a {STAGE_LABELS[key]} a resolverlo
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Alert>
+          )
       )}
 
-      <button
-        type="button"
-        onClick={onGenerateClick}
-        disabled={!readyToGenerate || isGenerating}
-        className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {isGenerating ? 'Generando…' : 'Generar documentación final'}
-      </button>
+      {/* Regla A: si falta generar una etapa, decir CUAL falta en vez de
+          dejar el boton deshabilitado sin explicacion. */}
+      {!readyToGenerate && pendingStageLabels.length > 0 && (
+        <p className="text-body-sm text-on-surface-variant">
+          Todavía falta generar: {pendingStageLabels.join(', ')}.
+        </p>
+      )}
+
+      <Button onClick={onGenerateClick} disabled={!readyToGenerate} loading={isGenerating}>
+        Generar documentación final
+      </Button>
     </div>
   );
 }

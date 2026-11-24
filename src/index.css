@@ -1,1 +1,202 @@
 @import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+/*
+ * Rediseño completo de UI en base al mockup de Stitch
+ * (stitch_ideator_ui_redesign.zip, ver docs/ui-guidelines.md). Reemplaza
+ * los tokens claros de las fases 1-7 anteriores: este sistema es oscuro
+ * desde la raiz ("Dark-First Technical Utility" segun el DESIGN.md del
+ * mockup), no hay variante clara. Paleta, tipografia y radios son los
+ * valores EXACTOS del tailwind.config embebido en cada pantalla exportada
+ * por Stitch, no una aproximacion.
+ */
+@theme {
+  /* --- Superficies (de mas oscura a mas clara) --- */
+  --color-surface: #031427;
+  --color-surface-dim: #031427;
+  --color-surface-bright: #2a3a4f;
+  --color-surface-container-lowest: #000f21;
+  --color-surface-container-low: #0b1c30;
+  --color-surface-container: #102034;
+  --color-surface-container-high: #1b2b3f;
+  --color-surface-container-highest: #26364a;
+  --color-surface-variant: #26364a;
+
+  /* --- Texto sobre superficie --- */
+  --color-on-surface: #d3e4fe;
+  --color-on-surface-variant: #c7c4d8;
+  --color-inverse-surface: #d3e4fe;
+  --color-inverse-on-surface: #213145;
+  --color-outline: #918fa1;
+  --color-outline-variant: #464555;
+
+  /* --- Primary (marca, indigo) --- */
+  --color-primary: #c3c0ff;
+  --color-on-primary: #1d00a5;
+  --color-primary-container: #4f46e5;
+  --color-on-primary-container: #dad7ff;
+  --color-primary-fixed: #e2dfff;
+  --color-primary-fixed-dim: #c3c0ff;
+  --color-on-primary-fixed: #0f0069;
+  --color-on-primary-fixed-variant: #3323cc;
+
+  /* --- Secondary (cian, IA/telemetria) --- */
+  --color-secondary: #4cd7f6;
+  --color-on-secondary: #003640;
+  --color-secondary-container: #03b5d3;
+  --color-on-secondary-container: #00424e;
+  --color-secondary-fixed: #acedff;
+  --color-secondary-fixed-dim: #4cd7f6;
+  --color-on-secondary-fixed: #001f26;
+  --color-on-secondary-fixed-variant: #004e5c;
+
+  /* --- Tertiary (esmeralda, estados "ok"/validado) --- */
+  --color-tertiary: #4edea3;
+  --color-on-tertiary: #003824;
+  --color-tertiary-container: #006e4b;
+  --color-on-tertiary-container: #67f4b7;
+  --color-tertiary-fixed: #6ffbbe;
+  --color-tertiary-fixed-dim: #4edea3;
+  --color-on-tertiary-fixed: #002113;
+  --color-on-tertiary-fixed-variant: #005236;
+
+  /* --- Danger/error (rosa) --- */
+  --color-danger: #ffb4ab;
+  --color-on-danger: #690005;
+  --color-danger-container: #93000a;
+  --color-on-danger-container: #ffdad6;
+
+  --color-background: #031427;
+  --color-on-background: #d3e4fe;
+
+  /* --- Warning (ambar) ---
+   * El DESIGN.md del mockup menciona "#F59E0B Amber" para advertencias en
+   * su prosa ("Palette Allocation"), pero ese color nunca se define como
+   * variable real en el tailwind.config embebido en los .html - no hay
+   * ningun token de warning ahi, solo primary/secondary/tertiary/error.
+   * Se agrega manteniendo la intencion documentada (mismo hex que citan),
+   * con un contenedor oscuro coherente con el resto de la paleta.
+   */
+  --color-warning: #f59e0b;
+  --color-on-warning: #451a03;
+  --color-warning-container: #78350f;
+  --color-on-warning-container: #fde68a;
+
+  /* --- Tipografia (nombres de tamaño propios, Inter + JetBrains Mono) --- */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --text-headline-xl: 32px;
+  --text-headline-xl--line-height: 40px;
+  --text-headline-xl--letter-spacing: -0.025em;
+  --text-headline-xl--font-weight: 600;
+
+  --text-headline-lg: 24px;
+  --text-headline-lg--line-height: 32px;
+  --text-headline-lg--letter-spacing: -0.02em;
+  --text-headline-lg--font-weight: 600;
+
+  --text-headline-md: 20px;
+  --text-headline-md--line-height: 28px;
+  --text-headline-md--letter-spacing: -0.015em;
+  --text-headline-md--font-weight: 500;
+
+  --text-headline-sm: 16px;
+  --text-headline-sm--line-height: 24px;
+  --text-headline-sm--letter-spacing: -0.01em;
+  --text-headline-sm--font-weight: 500;
+
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 24px;
+  --text-body-lg--letter-spacing: -0.005em;
+
+  --text-body-md: 14px;
+  --text-body-md--line-height: 20px;
+
+  --text-body-sm: 13px;
+  --text-body-sm--line-height: 18px;
+  --text-body-sm--letter-spacing: 0.005em;
+
+  --text-label-md: 12px;
+  --text-label-md--line-height: 16px;
+  --text-label-md--letter-spacing: 0.02em;
+  --text-label-md--font-weight: 500;
+
+  --text-label-sm: 11px;
+  --text-label-sm--line-height: 14px;
+  --text-label-sm--letter-spacing: 0.04em;
+  --text-label-sm--font-weight: 600;
+
+  --text-code-sm: 12px;
+  --text-code-sm--line-height: 18px;
+
+  /* --- Radios semanticos por tipo de elemento (ver DESIGN.md "Shapes") ---
+   * Nota: el tailwind.config embebido en los .html de Stitch pisa
+   * rounded-DEFAULT/lg/xl/full con valores que rompen rounded-full como
+   * circulo real (lo usan para avatares/status pips, que el propio
+   * DESIGN.md dice que deben ser circulares) - se interpreta como un bug
+   * de esa exportacion puntual, no como intencion de diseño, asi que NO
+   * se pisa rounded-full de Tailwind (sigue siendo 9999px). El resto de
+   * los radios usa tokens propios para no heredar esa inconsistencia.
+   */
+  --radius-control: 0.25rem; /* 4px - botones, inputs, chips, badges */
+  --radius-card: 0.5rem; /* 8px - tarjetas, paneles, dropdowns */
+  --radius-dialog: 0.75rem; /* 12px - modales, command palette */
+
+  /* --- Espaciado (retícula propia del mockup) --- */
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 0.75rem;
+  --spacing-space-lg: 1rem;
+  --spacing-space-xl: 1.5rem;
+  --spacing-space-2xl: 2.5rem;
+  --spacing-gutter: 1rem;
+  --spacing-gutter-desktop: 1.5rem;
+
+  /* --- Sombras (ver DESIGN.md "Elevation") --- */
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-raised: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-floating: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+  --shadow-glow-primary: 0 0 24px -4px rgb(79 70 229 / 0.25);
+}
+
+/* Tema oscuro unico: sin esto, prefers-color-scheme:light del sistema
+ * operativo del usuario no cambia nada aca (no hay clase "dark" condicional
+ * como en el mockup original - este diseño ES el unico tema). */
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  display: inline-block;
+}
+
+/* Apple HIG: con viewport-fit=cover (ver index.html) el contenido puede
+ * quedar debajo del notch/isla dinamica o la home indicator si no se
+ * reserva ese espacio a mano - estos tokens exponen env(safe-area-inset-*)
+ * (0px en navegadores/dispositivos sin recorte, asi que no afecta en
+ * desktop ni en Android) para que AppShell los use en su header fijo y en
+ * el padding inferior de la pantalla. */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}

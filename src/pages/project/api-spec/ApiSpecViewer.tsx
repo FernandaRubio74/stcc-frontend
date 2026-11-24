@@ -1,15 +1,22 @@
 import { useState } from 'react';
-import type { Endpoint, EndpointParameter, EndpointResponse, HttpMethod } from '../../../types/apiSpec';
+import type {
+  Endpoint,
+  EndpointParameter,
+  EndpointResponse,
+  HttpMethod,
+} from '../../../types/apiSpec';
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 const PARAM_LOCATIONS: EndpointParameter['in'][] = ['path', 'query', 'body'];
 
+// Ver DESIGN.md "Chips & Technical Badges": un color estable por metodo
+// HTTP (GET=secondary/cian, POST=primary/indigo, DELETE=error/rosa).
 const METHOD_COLORS: Record<HttpMethod, string> = {
-  GET: 'bg-blue-100 text-blue-800',
-  POST: 'bg-green-100 text-green-800',
-  PUT: 'bg-amber-100 text-amber-800',
-  PATCH: 'bg-amber-100 text-amber-800',
-  DELETE: 'bg-red-100 text-red-800',
+  GET: 'bg-secondary-container/20 text-secondary',
+  POST: 'bg-primary-container/30 text-primary',
+  PUT: 'bg-warning-container/30 text-warning',
+  PATCH: 'bg-warning-container/30 text-warning',
+  DELETE: 'bg-danger-container/30 text-danger',
 };
 
 function groupByResource(endpoints: Endpoint[]): Array<[string, number[]]> {
@@ -75,7 +82,11 @@ export function ApiSpecViewer({ endpoints, onChange, disabled }: Props) {
     ]);
   }
 
-  function updateParameter(endpointIndex: number, paramIndex: number, patch: Partial<EndpointParameter>) {
+  function updateParameter(
+    endpointIndex: number,
+    paramIndex: number,
+    patch: Partial<EndpointParameter>,
+  ) {
     const parameters = endpoints[endpointIndex].parameters.map((param, i) =>
       i === paramIndex ? { ...param, ...patch } : param,
     );
@@ -97,7 +108,11 @@ export function ApiSpecViewer({ endpoints, onChange, disabled }: Props) {
     });
   }
 
-  function updateResponse(endpointIndex: number, responseIndex: number, patch: Partial<EndpointResponse>) {
+  function updateResponse(
+    endpointIndex: number,
+    responseIndex: number,
+    patch: Partial<EndpointResponse>,
+  ) {
     const responses = endpoints[endpointIndex].responses.map((response, i) =>
       i === responseIndex ? { ...response, ...patch } : response,
     );
@@ -126,8 +141,10 @@ export function ApiSpecViewer({ endpoints, onChange, disabled }: Props) {
         // cambia en cada tecla, y usarlo como key forzaria a React a
         // desmontar y remontar todo el subarbol, perdiendo el foco del input.
         <div key={indexes[0]} className="space-y-2">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">{resource}</h3>
-          <ul className="divide-y divide-gray-200 rounded-md border border-gray-200 bg-white">
+          <h3 className="text-label-md font-semibold uppercase tracking-wide text-outline">
+            {resource}
+          </h3>
+          <ul className="divide-y divide-outline-variant/30 rounded-control border border-outline-variant/30 bg-surface-container-low">
             {indexes.map((index) => {
               const endpoint = endpoints[index];
               const isExpanded = expanded.has(index);
@@ -140,13 +157,20 @@ export function ApiSpecViewer({ endpoints, onChange, disabled }: Props) {
                     aria-label={`${endpoint.method} ${endpoint.path || '(sin ruta)'}`}
                     className="flex w-full items-center gap-3 text-left"
                   >
-                    <span className={`rounded px-2 py-0.5 text-xs font-bold ${METHOD_COLORS[endpoint.method]}`}>
+                    <span
+                      className={`rounded px-2 py-0.5 text-xs font-bold ${METHOD_COLORS[endpoint.method]}`}
+                    >
                       {endpoint.method}
                     </span>
-                    <span className="flex-1 font-mono text-sm text-gray-800">{endpoint.path || '(sin ruta)'}</span>
-                    <span className="flex gap-1">
+                    <span className="min-w-0 flex-1 truncate font-mono text-body-sm text-on-surface">
+                      {endpoint.path || '(sin ruta)'}
+                    </span>
+                    <span className="flex flex-wrap justify-end gap-1">
                       {endpoint.responses.map((response, i) => (
-                        <span key={i} className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
+                        <span
+                          key={i}
+                          className="rounded bg-surface-container-highest px-1.5 py-0.5 text-label-sm text-on-surface-variant"
+                        >
                           {response.status}
                         </span>
                       ))}
@@ -154,15 +178,17 @@ export function ApiSpecViewer({ endpoints, onChange, disabled }: Props) {
                   </button>
 
                   {isExpanded && (
-                    <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+                    <div className="mt-3 space-y-3 border-t border-outline-variant/20 pt-3">
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <label className="text-xs text-gray-500">
+                        <label className="text-label-sm text-outline">
                           Metodo
                           <select
                             value={endpoint.method}
-                            onChange={(e) => updateEndpoint(index, { method: e.target.value as HttpMethod })}
+                            onChange={(e) =>
+                              updateEndpoint(index, { method: e.target.value as HttpMethod })
+                            }
                             disabled={disabled}
-                            className="mt-1 block w-full rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
+                            className="mt-1 block w-full rounded border border-outline-variant bg-surface-container-lowest px-2 py-1 text-body-sm text-on-surface disabled:bg-surface-container"
                           >
                             {METHODS.map((method) => (
                               <option key={method} value={method}>
@@ -171,46 +197,50 @@ export function ApiSpecViewer({ endpoints, onChange, disabled }: Props) {
                             ))}
                           </select>
                         </label>
-                        <label className="text-xs text-gray-500">
+                        <label className="text-label-sm text-outline">
                           Ruta
                           <input
                             value={endpoint.path}
                             onChange={(e) => updateEndpoint(index, { path: e.target.value })}
                             disabled={disabled}
-                            className="mt-1 block w-full rounded border border-gray-300 px-2 py-1 font-mono text-sm disabled:bg-gray-50"
+                            className="mt-1 block w-full rounded border border-outline-variant bg-surface-container-lowest px-2 py-1 font-mono text-body-sm text-on-surface disabled:bg-surface-container"
                           />
                         </label>
-                        <label className="text-xs text-gray-500 sm:col-span-2">
+                        <label className="text-label-sm text-outline sm:col-span-2">
                           Descripcion
                           <input
                             value={endpoint.description}
                             onChange={(e) => updateEndpoint(index, { description: e.target.value })}
                             disabled={disabled}
-                            className="mt-1 block w-full rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
+                            className="mt-1 block w-full rounded border border-outline-variant bg-surface-container-lowest px-2 py-1 text-body-sm text-on-surface disabled:bg-surface-container"
                           />
                         </label>
-                        <label className="text-xs text-gray-500 sm:col-span-2">
+                        <label className="text-label-sm text-outline sm:col-span-2">
                           Entidad del modelo de datos
                           <input
                             value={endpoint.resourceEntity}
-                            onChange={(e) => updateEndpoint(index, { resourceEntity: e.target.value })}
+                            onChange={(e) =>
+                              updateEndpoint(index, { resourceEntity: e.target.value })
+                            }
                             disabled={disabled}
-                            className="mt-1 block w-full rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
+                            className="mt-1 block w-full rounded border border-outline-variant bg-surface-container-lowest px-2 py-1 text-body-sm text-on-surface disabled:bg-surface-container"
                           />
                         </label>
                       </div>
 
                       <div className="space-y-1">
-                        <p className="text-xs font-semibold text-gray-500">Parametros</p>
+                        <p className="text-label-sm font-semibold text-outline">Parametros</p>
                         {endpoint.parameters.map((param, paramIndex) => (
                           <div key={paramIndex} className="flex flex-wrap items-center gap-2">
                             <input
                               value={param.name}
-                              onChange={(e) => updateParameter(index, paramIndex, { name: e.target.value })}
+                              onChange={(e) =>
+                                updateParameter(index, paramIndex, { name: e.target.value })
+                              }
                               disabled={disabled}
                               placeholder="nombre"
                               aria-label={`parametro ${paramIndex + 1} nombre`}
-                              className="w-28 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
+                              className="w-28 rounded border border-outline-variant bg-surface-container-lowest px-2 py-1 text-body-sm text-on-surface disabled:bg-surface-container"
                             />
                             <select
                               value={param.in}
@@ -220,7 +250,7 @@ export function ApiSpecViewer({ endpoints, onChange, disabled }: Props) {
                                 })
                               }
                               disabled={disabled}
-                              className="rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
+                              className="rounded border border-outline-variant bg-surface-container-lowest px-2 py-1 text-body-sm text-on-surface disabled:bg-surface-container"
                             >
                               {PARAM_LOCATIONS.map((loc) => (
                                 <option key={loc} value={loc}>
@@ -230,35 +260,41 @@ export function ApiSpecViewer({ endpoints, onChange, disabled }: Props) {
                             </select>
                             <input
                               value={param.type}
-                              onChange={(e) => updateParameter(index, paramIndex, { type: e.target.value })}
+                              onChange={(e) =>
+                                updateParameter(index, paramIndex, { type: e.target.value })
+                              }
                               disabled={disabled}
                               placeholder="tipo"
                               aria-label={`parametro ${paramIndex + 1} tipo`}
-                              className="w-20 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
+                              className="w-20 rounded border border-outline-variant bg-surface-container-lowest px-2 py-1 text-body-sm text-on-surface disabled:bg-surface-container"
                             />
-                            <label className="flex items-center gap-1 text-xs text-gray-600">
+                            <label className="flex items-center gap-1 text-label-sm text-on-surface-variant">
                               <input
                                 type="checkbox"
                                 checked={param.required}
-                                onChange={(e) => updateParameter(index, paramIndex, { required: e.target.checked })}
+                                onChange={(e) =>
+                                  updateParameter(index, paramIndex, { required: e.target.checked })
+                                }
                                 disabled={disabled}
                               />
                               requerido
                             </label>
                             <input
                               value={param.description}
-                              onChange={(e) => updateParameter(index, paramIndex, { description: e.target.value })}
+                              onChange={(e) =>
+                                updateParameter(index, paramIndex, { description: e.target.value })
+                              }
                               disabled={disabled}
                               placeholder="descripcion"
                               aria-label={`parametro ${paramIndex + 1} descripcion`}
-                              className="min-w-[8rem] flex-1 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
+                              className="min-w-[8rem] flex-1 rounded border border-outline-variant bg-surface-container-lowest px-2 py-1 text-body-sm text-on-surface disabled:bg-surface-container"
                             />
                             {!disabled && (
                               <button
                                 type="button"
                                 onClick={() => removeParameter(index, paramIndex)}
                                 aria-label={`Quitar parametro ${paramIndex + 1}`}
-                                className="text-xs text-red-600 hover:underline"
+                                className="text-label-sm text-danger hover:underline"
                               >
                                 Quitar
                               </button>
@@ -269,7 +305,7 @@ export function ApiSpecViewer({ endpoints, onChange, disabled }: Props) {
                           <button
                             type="button"
                             onClick={() => addParameter(index)}
-                            className="text-xs font-medium text-indigo-600 hover:underline"
+                            className="text-label-sm font-medium text-primary hover:underline"
                           >
                             + Agregar parametro
                           </button>
@@ -277,33 +313,39 @@ export function ApiSpecViewer({ endpoints, onChange, disabled }: Props) {
                       </div>
 
                       <div className="space-y-1">
-                        <p className="text-xs font-semibold text-gray-500">Respuestas</p>
+                        <p className="text-label-sm font-semibold text-outline">Respuestas</p>
                         {endpoint.responses.map((response, responseIndex) => (
                           <div key={responseIndex} className="flex flex-wrap items-center gap-2">
                             <input
                               type="number"
                               value={response.status}
                               onChange={(e) =>
-                                updateResponse(index, responseIndex, { status: Number(e.target.value) })
+                                updateResponse(index, responseIndex, {
+                                  status: Number(e.target.value),
+                                })
                               }
                               disabled={disabled}
                               aria-label={`respuesta ${responseIndex + 1} status`}
-                              className="w-20 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
+                              className="w-20 rounded border border-outline-variant bg-surface-container-lowest px-2 py-1 text-body-sm text-on-surface disabled:bg-surface-container"
                             />
                             <input
                               value={response.description}
-                              onChange={(e) => updateResponse(index, responseIndex, { description: e.target.value })}
+                              onChange={(e) =>
+                                updateResponse(index, responseIndex, {
+                                  description: e.target.value,
+                                })
+                              }
                               disabled={disabled}
                               placeholder="descripcion"
                               aria-label={`respuesta ${responseIndex + 1} descripcion`}
-                              className="min-w-[10rem] flex-1 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50"
+                              className="min-w-[10rem] flex-1 rounded border border-outline-variant bg-surface-container-lowest px-2 py-1 text-body-sm text-on-surface disabled:bg-surface-container"
                             />
                             {!disabled && (
                               <button
                                 type="button"
                                 onClick={() => removeResponse(index, responseIndex)}
                                 aria-label={`Quitar respuesta ${responseIndex + 1}`}
-                                className="text-xs text-red-600 hover:underline"
+                                className="text-label-sm text-danger hover:underline"
                               >
                                 Quitar
                               </button>
@@ -314,7 +356,7 @@ export function ApiSpecViewer({ endpoints, onChange, disabled }: Props) {
                           <button
                             type="button"
                             onClick={() => addResponse(index)}
-                            className="text-xs font-medium text-indigo-600 hover:underline"
+                            className="text-label-sm font-medium text-primary hover:underline"
                           >
                             + Agregar respuesta
                           </button>
@@ -325,7 +367,7 @@ export function ApiSpecViewer({ endpoints, onChange, disabled }: Props) {
                         <button
                           type="button"
                           onClick={() => removeEndpoint(index)}
-                          className="text-xs font-medium text-red-600 hover:underline"
+                          className="text-label-sm font-medium text-danger hover:underline"
                         >
                           Eliminar endpoint
                         </button>
@@ -340,7 +382,11 @@ export function ApiSpecViewer({ endpoints, onChange, disabled }: Props) {
       ))}
 
       {!disabled && (
-        <button type="button" onClick={addEndpoint} className="text-sm font-medium text-indigo-600 hover:underline">
+        <button
+          type="button"
+          onClick={addEndpoint}
+          className="text-body-sm font-medium text-primary hover:underline"
+        >
           + Agregar endpoint
         </button>
       )}

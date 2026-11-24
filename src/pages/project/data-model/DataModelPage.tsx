@@ -1,25 +1,45 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../hooks/useAuth';
+import { usePageTitle } from '../../../hooks/usePageTitle';
 import { getProject } from '../../../services/projectsService';
 import {
   approveDataModelVersion,
   generateDataModel,
   getDataModel,
+  refineDataModel,
   updateDataModelEntities,
 } from '../../../services/dataModelService';
+import { StageAssistant } from '../../../components/StageAssistant';
+import { StageGenerateCard } from '../../../components/StageGenerateCard';
 import { ApiError } from '../../../lib/apiClient';
 import { ErDiagram } from './ErDiagram';
 import { EntityEditor } from './EntityEditor';
 import type { Entity } from '../../../types/dataModel';
+import { AppShell } from '../../../components/AppShell';
+import { BackLink } from '../../../components/BackLink';
+import { PageHeader } from '../../../components/PageHeader';
+import { Alert } from '../../../components/Alert';
+import { Skeleton } from '../../../components/Skeleton';
+import { Button } from '../../../components/Button';
+import { ConfirmDialog } from '../../../components/ConfirmDialog';
+import { Icon } from '../../../components/icons';
+import { useToast } from '../../../components/Toast';
+import { getNextStagePath } from '../projectStages';
+import { StageInconsistencyAlert } from '../../../components/StageInconsistencyAlert';
+import { usePrefillInstruction } from '../../../hooks/usePrefillInstruction';
 
 // STCC-113 (US-022): pagina del modelo de datos — diagrama ER, editor
 // inline de entidades y el flujo de generar/guardar/aprobar version.
 export function DataModelPage() {
+  usePageTitle('Modelo de datos');
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
+  const prefillInstruction = usePrefillInstruction();
   const { token } = useAuth();
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
 
   const [entities, setEntities] = useState<Entity[]>([]);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
@@ -55,15 +75,41 @@ export function DataModelPage() {
     }
   }, [dataModelQuery.data]);
 
+  // Tambien invalida el chequeo de consistencia (StageInconsistencyAlert):
+  // sin esto, el aviso de conflicto quedaba pegado con el mensaje viejo
+  // aunque ya se haya resuelto, porque esa query tiene su propia key y
+  // nada la refrescaba al generar/ajustar/guardar en esta etapa.
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: dataModelQueryKey });
+    queryClient.invalidateQueries({ queryKey: ['project', projectId, 'consistency-check'] });
+  }
+
+  // "Generar con IA" y "Ajustar con IA" actualizan el MISMO draft in place
+  // (mismo id, no crean una version nueva) - el efecto de arriba solo
+  // re-siembra `entities` cuando cambia el id, a proposito, para no pisar
+  // una edicion manual sin guardar en cada refetch de fondo. Pero eso
+  // significa que, sin esto, regenerar/ajustar con IA invalidaba la query
+  // y el servidor SI tenia el contenido nuevo, pero el editor seguia
+  // mostrando el viejo (mismo id = el efecto nunca se disparaba de nuevo) -
+  // bug real reportado: "le doy a generar de nuevo y no cambia nada".
+  // Por eso estos dos casos siembran `entities` DIRECTO del resultado,
+  // ademas de invalidar (que sigue haciendo falta para versionNumber/status).
+  async function handleRefine(instruction: string) {
+    const draft = await refineDataModel(projectId as string, instruction, token as string);
+    setEntities(draft.entities);
+    seededVersionId.current = draft.id;
+    invalidate();
+    showToast('Modelo de datos ajustado');
   }
 
   const generateMutation = useMutation({
     mutationFn: () => generateDataModel(projectId as string, token as string),
-    onSuccess: () => {
+    onSuccess: (draft) => {
       setGenerateError(null);
+      setEntities(draft.entities);
+      seededVersionId.current = draft.id;
       invalidate();
+      showToast('Modelo de datos generado');
     },
     onError: (error: unknown) => {
       setGenerateError(error instanceof ApiError ? error.message : 'Ocurrió un error inesperado');
@@ -75,6 +121,7 @@ export function DataModelPage() {
     onSuccess: () => {
       setSaveError(null);
       invalidate();
+      showToast('Cambios guardados');
     },
     onError: (error: unknown) => {
       setSaveError(error instanceof ApiError ? error.message : 'Ocurrió un error inesperado');
@@ -87,6 +134,9 @@ export function DataModelPage() {
       setApproveError(null);
       setShowApproveConfirm(false);
       invalidate();
+      showToast('Versión aprobada');
+      const nextPath = getNextStagePath(projectId as string, 'data-model');
+      if (nextPath) navigate(nextPath);
     },
     onError: (error: unknown) => {
       setApproveError(error instanceof ApiError ? error.message : 'Ocurrió un error inesperado');
@@ -94,19 +144,32 @@ export function DataModelPage() {
   });
 
   if (projectQuery.isPending || dataModelQuery.isPending) {
-    return <p className="p-8 text-sm text-gray-500">Cargando…</p>;
+    return (
+      <AppShell>
+        <Skeleton variant="text" className="w-48" />
+        <Skeleton variant="block" />
+      </AppShell>
+    );
   }
 
-  if (projectQuery.isError || !projectQuery.data || dataModelQuery.isError || !dataModelQuery.data) {
+  if (
+    projectQuery.isError ||
+    !projectQuery.data ||
+    dataModelQuery.isError ||
+    !dataModelQuery.data
+  ) {
     return (
-      <div className="space-y-3 p-8">
-        <p role="alert" className="text-sm text-red-700">
+      <AppShell>
+        <Alert
+          onRetry={() => {
+            projectQuery.refetch();
+            dataModelQuery.refetch();
+          }}
+        >
           No se pudo cargar el modelo de datos
-        </p>
-        <Link to={`/projects/${projectId}`} className="text-sm text-indigo-600 hover:underline">
-          Volver al proyecto
-        </Link>
-      </div>
+        </Alert>
+        <BackLink to={`/projects/${projectId}`}>Volver al proyecto</BackLink>
+      </AppShell>
     );
   }
 
@@ -115,126 +178,137 @@ export function DataModelPage() {
   const canApprove = role === 'owner';
   const { draft, approved } = dataModelQuery.data;
   const current = draft ?? approved;
+  const relationCount = entities.reduce(
+    (count, entity) => count + entity.attributes.filter((a) => a.foreignKey).length,
+    0,
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <Link to={`/projects/${projectId}`} className="text-sm text-indigo-600 hover:underline">
-          ← Volver al proyecto
-        </Link>
+    <AppShell breadcrumb={projectQuery.data.name}>
+      <BackLink to={`/projects/${projectId}`}>Volver al proyecto</BackLink>
 
-        <header>
-          <h1 className="text-2xl font-semibold text-gray-900">Modelo de datos</h1>
-        </header>
+      <PageHeader title="Modelo de datos" />
 
-        <div className="rounded-md border border-gray-200 bg-white p-3 text-sm text-gray-700">
-          {approved && (
-            <p>
-              ✅ Version vigente aprobada: <strong>v{approved.versionNumber}</strong>
-            </p>
+      <StageInconsistencyAlert projectId={projectId as string} ruleStage="data-model" />
+
+      <div className="flex flex-wrap items-center justify-between gap-space-md rounded-xl bg-surface-container px-gutter py-space-sm shadow-sm">
+        <div className="flex flex-wrap items-center gap-space-sm">
+          {approved && !draft && (
+            <span className="flex items-center gap-1.5 rounded-full bg-tertiary-container/30 px-3 py-1 text-label-sm font-medium text-tertiary">
+              <Icon name="verified" className="text-[16px]" filled />
+              Aprobada v{approved.versionNumber} (sin cambios pendientes)
+            </span>
           )}
-          {draft ? (
-            <p>
-              ✏️ Hay una version en edicion: <strong>v{draft.versionNumber} (DRAFT)</strong>
-            </p>
-          ) : (
-            approved && <p className="text-gray-500">No hay cambios pendientes sobre la version aprobada.</p>
+          {draft && (
+            <span className="flex items-center gap-1.5 rounded-full bg-warning-container/30 px-3 py-1 text-label-sm font-medium text-warning">
+              <Icon name="edit_note" className="text-[16px]" />
+              En edición v{draft.versionNumber} (DRAFT)
+            </span>
           )}
-          {!approved && !draft && <p className="text-gray-500">Todavia no se genero ningun modelo.</p>}
+          {!approved && !draft && (
+            <span className="text-body-sm text-on-surface-variant">Todavía no se generó ningún modelo.</span>
+          )}
+          {current && (
+            <span className="flex items-center gap-1.5 rounded bg-surface-container-high px-3 py-1 font-mono text-code-sm text-on-surface-variant">
+              <Icon name="database" className="text-[16px] text-secondary" />
+              {entities.length} entidades
+              <span className="text-outline">|</span>
+              <span className="text-tertiary">{relationCount} relaciones FK</span>
+            </span>
+          )}
         </div>
-
-        {!current && canEdit && (
-          <div className="space-y-2">
-            {generateError && (
-              <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-                {generateError}
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={() => generateMutation.mutate()}
-              disabled={generateMutation.isPending}
-              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {generateMutation.isPending ? 'Generando…' : 'Generar con IA'}
-            </button>
-          </div>
-        )}
-
-        {current && (
-          <>
-            <section className="space-y-2">
-              <h2 className="text-lg font-semibold text-gray-900">Diagrama</h2>
-              <ErDiagram diagram={current.diagram} />
-            </section>
-
-            <section className="space-y-3">
-              <h2 className="text-lg font-semibold text-gray-900">Entidades</h2>
-              <EntityEditor entities={entities} onChange={setEntities} disabled={!canEdit} />
-
-              {saveError && (
-                <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-                  {saveError}
-                </p>
-              )}
-
-              {canEdit && (
-                <button
-                  type="button"
-                  onClick={() => saveMutation.mutate()}
-                  disabled={saveMutation.isPending}
-                  className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {saveMutation.isPending ? 'Guardando…' : 'Guardar cambios'}
-                </button>
-              )}
-            </section>
-
-            {canApprove && draft && (
-              <section className="space-y-2 rounded-md border border-indigo-200 bg-indigo-50 p-4">
-                {approveError && (
-                  <p role="alert" className="text-sm text-red-700">
-                    {approveError}
-                  </p>
-                )}
-                {!showApproveConfirm ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowApproveConfirm(true)}
-                    className="rounded-md border border-indigo-600 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-100"
-                  >
-                    Aprobar versión
-                  </button>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-sm text-indigo-900">
-                      ¿Confirmás que esta version (v{draft.versionNumber}) queda como la version vigente? No vas a
-                      poder editarla libremente despues.
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => approveMutation.mutate()}
-                        disabled={approveMutation.isPending}
-                        className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {approveMutation.isPending ? 'Aprobando…' : 'Sí, aprobar'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowApproveConfirm(false)}
-                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </section>
-            )}
-          </>
+        {canEdit && current && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => generateMutation.mutate()}
+            loading={generateMutation.isPending}
+          >
+            <Icon name="auto_awesome" className="text-[16px]" />
+            Generar nueva versión con IA
+          </Button>
         )}
       </div>
-    </div>
+
+      {!current && canEdit && (
+        <StageGenerateCard
+          title="el modelo de datos"
+          description="Es la estructura de la información que va a guardar tu producto: qué entidades existen, qué atributos tiene cada una y cómo se relacionan entre sí."
+          inputs={['El problema y el contexto que contaste', 'Los usuarios objetivo y el alcance del MVP']}
+          outputs={['Las entidades con sus atributos y claves', 'El diagrama entidad-relación', 'Datos de ejemplo coherentes']}
+          ctaLabel="Generar modelo de datos"
+          onGenerate={() => generateMutation.mutate()}
+          isGenerating={generateMutation.isPending}
+          error={generateError}
+        />
+      )}
+
+      {current && generateError && <Alert>{generateError}</Alert>}
+
+      {current && (
+        <StageAssistant
+          id="data-model"
+          placeholder='Ej: "Agregá una entidad Proveedor con nombre, email y teléfono"'
+          onSubmit={handleRefine}
+          disabled={!canEdit}
+          disabledReason="Solo el owner o un editor puede ajustar el modelo de datos."
+          initialInstruction={prefillInstruction}
+        />
+      )}
+
+      {current && (
+        <>
+          <section className="flex flex-col gap-space-sm">
+            <h2 className="flex items-center gap-space-xs text-headline-sm font-semibold text-on-surface">
+              <Icon name="account_tree" className="text-secondary" />
+              Visualizador ERD relacional
+            </h2>
+            <ErDiagram diagram={current.diagram} />
+          </section>
+
+          <section className="flex flex-col gap-space-md">
+            <h2 className="text-headline-sm font-semibold text-on-surface">Entidades</h2>
+            <EntityEditor entities={entities} onChange={setEntities} disabled={!canEdit} />
+
+            {saveError && <Alert>{saveError}</Alert>}
+
+            {canEdit && (
+              <Button onClick={() => saveMutation.mutate()} loading={saveMutation.isPending} className="self-start">
+                Guardar cambios
+              </Button>
+            )}
+          </section>
+
+          {canApprove && draft && (
+            <section className="flex items-center justify-between gap-space-md rounded-xl bg-primary-container/10 p-space-lg">
+              <div className="flex flex-col gap-1">
+                {approveError && <Alert>{approveError}</Alert>}
+                <p className="text-body-sm text-on-surface-variant">
+                  Esta versión queda vigente y deja de poder editarse libremente.
+                </p>
+              </div>
+              <Button variant="secondary" onClick={() => setShowApproveConfirm(true)} className="shrink-0">
+                <Icon name="arrow_forward" className="text-[16px]" />
+                Aprobar y continuar
+              </Button>
+            </section>
+          )}
+
+          <ConfirmDialog
+            open={showApproveConfirm}
+            title="Aprobar versión"
+            description={
+              draft
+                ? `¿Confirmás que esta version (v${draft.versionNumber}) queda como la version vigente? No vas a poder editarla libremente despues.`
+                : ''
+            }
+            confirmLabel="Sí, aprobar"
+            isConfirming={approveMutation.isPending}
+            onConfirm={() => approveMutation.mutate()}
+            onCancel={() => setShowApproveConfirm(false)}
+          />
+        </>
+      )}
+    </AppShell>
   );
 }

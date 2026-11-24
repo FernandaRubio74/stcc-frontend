@@ -26,6 +26,7 @@ function baseProps() {
     messages: [USER_MSG, ASSISTANT_MSG],
     blockingQuestions: [] as BlockingQuestion[],
     stageComplete: false,
+    suggestions: [] as string[],
     onSendMessage: vi.fn(),
     isSending: false,
     sendError: null,
@@ -86,17 +87,79 @@ describe('ConversationWizard - enviar mensaje', () => {
     expect(onSendMessage).not.toHaveBeenCalled();
   });
 
-  it('deshabilita el input y el botón mientras se está enviando', () => {
+  it('deshabilita el input y el botón mientras se está enviando (Button muestra "Cargando…")', () => {
     render(<ConversationWizard {...baseProps()} isSending={true} />);
 
     expect(screen.getByLabelText('Tu respuesta')).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Enviando…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cargando…' })).toBeDisabled();
   });
 
   it('muestra el error de envío recibido por props', () => {
     render(<ConversationWizard {...baseProps()} sendError="El asistente de IA no está disponible" />);
 
     expect(screen.getAllByRole('alert')[0]).toHaveTextContent('El asistente de IA no está disponible');
+  });
+});
+
+describe('ConversationWizard - sugerencias de un click', () => {
+  it('muestra las sugerencias recibidas como botones', () => {
+    render(
+      <ConversationWizard
+        {...baseProps()}
+        suggestions={['Es para los clientes de mi local', 'Es para mi equipo interno']}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Es para los clientes de mi local' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Es para mi equipo interno' })).toBeInTheDocument();
+  });
+
+  it('elegir una sugerencia la carga en el campo de texto sin enviarla sola', async () => {
+    const user = userEvent.setup();
+    const onSendMessage = vi.fn();
+    render(
+      <ConversationWizard
+        {...baseProps()}
+        suggestions={['Es para los clientes de mi local']}
+        onSendMessage={onSendMessage}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Es para los clientes de mi local' }));
+
+    expect(screen.getByLabelText('Tu respuesta')).toHaveValue('Es para los clientes de mi local');
+    expect(onSendMessage).not.toHaveBeenCalled();
+  });
+
+  it('el chat libre sigue disponible para completar o cambiar la sugerencia elegida', async () => {
+    const user = userEvent.setup();
+    const onSendMessage = vi.fn();
+    render(
+      <ConversationWizard
+        {...baseProps()}
+        suggestions={['Es para los clientes de mi local']}
+        onSendMessage={onSendMessage}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Es para los clientes de mi local' }));
+    const input = screen.getByLabelText('Tu respuesta');
+    await user.type(input, ', sobre todo los fines de semana');
+    await user.click(screen.getByRole('button', { name: 'Enviar' }));
+
+    expect(onSendMessage).toHaveBeenCalledWith('Es para los clientes de mi local, sobre todo los fines de semana');
+  });
+
+  it('no muestra sugerencias mientras se esta enviando un mensaje', () => {
+    render(<ConversationWizard {...baseProps()} suggestions={['algo']} isSending={true} />);
+
+    expect(screen.queryByRole('button', { name: 'algo' })).not.toBeInTheDocument();
+  });
+
+  it('no muestra la fila de sugerencias cuando no hay ninguna', () => {
+    render(<ConversationWizard {...baseProps()} suggestions={[]} />);
+
+    expect(screen.queryByLabelText('Respuestas sugeridas')).not.toBeInTheDocument();
   });
 });
 

@@ -10,9 +10,9 @@ interface Props {
 // para reemplazar los "Todavia no hay X" sueltos de cada pantalla.
 export function EmptyState({ title, description, action }: Props) {
   return (
-    <div className="space-y-2 rounded-md border border-dashed border-gray-300 bg-white p-6 text-center">
-      <p className="text-sm font-medium text-gray-900">{title}</p>
-      {description && <p className="text-sm text-gray-500">{description}</p>}
+    <div className="space-y-2 rounded-card border border-dashed border-outline-variant bg-surface-container-low p-space-xl text-center">
+      <p className="text-body-sm font-medium text-on-surface">{title}</p>
+      {description && <p className="text-body-sm text-on-surface-variant">{description}</p>}
       {action && <div className="pt-2">{action}</div>}
     </div>
   );

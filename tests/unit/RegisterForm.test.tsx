@@ -60,8 +60,8 @@ describe('RegisterForm', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('El email ya esta registrado');
   });
 
-  it('deshabilita el submit mientras isSubmitting es true', () => {
+  it('deshabilita el submit mientras isSubmitting es true (Button muestra "Cargando…")', () => {
     render(<RegisterForm onSubmit={vi.fn()} isSubmitting formError={null} onGoogleClick={vi.fn()} />);
-    expect(screen.getByRole('button', { name: /creando cuenta/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /cargando/i })).toBeDisabled();
   });
 });

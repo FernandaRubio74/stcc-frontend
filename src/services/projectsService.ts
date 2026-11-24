@@ -1,13 +1,13 @@
 import { apiFetch } from '../lib/apiClient';
-import type { Project, ProjectDetail } from '../types/project';
+import type { Project, ProjectDetail, ProjectListItem } from '../types/project';
 
 export interface CreateProjectPayload {
   name: string;
   description?: string;
 }
 
-export function listProjects(token: string): Promise<Project[]> {
-  return apiFetch<Project[]>('/projects', { token });
+export function listProjects(token: string): Promise<ProjectListItem[]> {
+  return apiFetch<ProjectListItem[]>('/projects', { token });
 }
 
 export function getProject(projectId: string, token: string): Promise<ProjectDetail> {
