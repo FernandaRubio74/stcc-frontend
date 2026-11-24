@@ -1,5 +1,10 @@
 import { apiFetch } from '../lib/apiClient';
-import type { BlockingQuestion, DefinitionState, PostDefinitionMessageResult } from '../types/definition';
+import type {
+  AdvanceStageResult,
+  BlockingQuestion,
+  DefinitionState,
+  PostDefinitionMessageResult,
+} from '../types/definition';
 
 export function getDefinition(projectId: string, token: string): Promise<DefinitionState> {
   return apiFetch<DefinitionState>(`/projects/${projectId}/definition`, { token });
@@ -21,8 +26,8 @@ export function listBlockingQuestions(projectId: string, token: string): Promise
   return apiFetch<BlockingQuestion[]>(`/projects/${projectId}/definition/blocking-questions`, { token });
 }
 
-export function advanceDefinitionStage(projectId: string, token: string): Promise<DefinitionState> {
-  return apiFetch<DefinitionState>(`/projects/${projectId}/definition/advance`, {
+export function advanceDefinitionStage(projectId: string, token: string): Promise<AdvanceStageResult> {
+  return apiFetch<AdvanceStageResult>(`/projects/${projectId}/definition/advance`, {
     method: 'POST',
     token,
   });

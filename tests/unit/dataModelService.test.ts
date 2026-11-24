@@ -3,6 +3,7 @@ import {
   approveDataModelVersion,
   generateDataModel,
   getDataModel,
+  refineDataModel,
   updateDataModelEntities,
 } from '../../src/services/dataModelService';
 
@@ -81,5 +82,16 @@ describe('dataModelService', () => {
     mockFetchOnce(409, { error: 'No hay una version en edicion para aprobar' });
 
     await expect(approveDataModelVersion('proj-1', 'token')).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('refineDataModel hace POST a /refine con la instruccion', async () => {
+    mockFetchOnce(200, { id: 'v1', versionNumber: 1, status: 'DRAFT', entities: [], diagram: null });
+
+    await refineDataModel('proj-1', 'Agrega una entidad Proveedor', 'token');
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/projects/proj-1/data-model/refine'),
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ instruction: 'Agrega una entidad Proveedor' }) }),
+    );
   });
 });

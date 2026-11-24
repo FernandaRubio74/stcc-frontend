@@ -10,6 +10,7 @@ const ALL_COMPLETE: ReviewSummary['stages'] = {
   apiSpec: { complete: true },
   screens: { complete: true },
   architecture: { complete: true },
+  testing: { complete: true },
 };
 
 const NONE_COMPLETE: ReviewSummary['stages'] = {
@@ -18,9 +19,84 @@ const NONE_COMPLETE: ReviewSummary['stages'] = {
   apiSpec: { complete: false },
   screens: { complete: false },
   architecture: { complete: false },
+  testing: { complete: false },
 };
 
 describe('ReviewChecklist', () => {
+  // Regla A/D de la revision transversal: una etapa sin generar es
+  // "pendiente de generar", nunca un conflicto - aunque una regla la
+  // mencione entre las etapas que compara.
+  it('una etapa sin generar se muestra como pendiente, nunca como conflicto', () => {
+    render(
+      <ReviewChecklist
+        stages={NONE_COMPLETE}
+        inconsistencies={[
+          { rule: 'entities-coverage', stages: ['data-model', 'api-spec'], status: 'error', message: 'x' },
+        ]}
+        blockingQuestions={[]}
+        onNavigateToStage={vi.fn()}
+        onNavigateToConflict={vi.fn()}
+        onResolveStage={vi.fn()}
+        readyToGenerate={false}
+        onGenerateClick={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    expect(screen.getAllByText('Pendiente de generar')).toHaveLength(6);
+    expect(screen.queryByText('Con conflicto')).not.toBeInTheDocument();
+  });
+
+  it('dice que etapas faltan generar cuando no esta listo', () => {
+    render(
+      <ReviewChecklist
+        stages={{ ...ALL_COMPLETE, screens: { complete: false } }}
+        inconsistencies={[]}
+        blockingQuestions={[]}
+        onNavigateToStage={vi.fn()}
+        onNavigateToConflict={vi.fn()}
+        onResolveStage={vi.fn()}
+        readyToGenerate={false}
+        onGenerateClick={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    expect(screen.getByText(/Todavía falta generar: Mapa de pantallas/)).toBeInTheDocument();
+  });
+
+  // Regla D: solo "error" bloquea. Una advertencia se ve distinta y se
+  // lista aparte, aclarando que no bloquea.
+  it('una advertencia se muestra como aviso y no como conflicto', () => {
+    render(
+      <ReviewChecklist
+        stages={ALL_COMPLETE}
+        inconsistencies={[
+          {
+            id: 'actors-coverage:no-differentiation',
+            rule: 'actors-coverage',
+            stages: ['definition', 'data-model'],
+            status: 'advertencia',
+            message: 'Ninguna etapa posterior diferencia los tipos de usuario',
+            suggestion: 'Agregá un campo de rol en la entidad de usuario.',
+          },
+        ]}
+        blockingQuestions={[]}
+        onNavigateToStage={vi.fn()}
+        onNavigateToConflict={vi.fn()}
+        onResolveStage={vi.fn()}
+        readyToGenerate={false}
+        onGenerateClick={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    expect(screen.getAllByText('Con aviso')).toHaveLength(2);
+    expect(screen.queryByText('Con conflicto')).not.toBeInTheDocument();
+    expect(screen.getByText('Avisos de consistencia (no bloquean la generación)')).toBeInTheDocument();
+    expect(screen.getByText('Agregá un campo de rol en la entidad de usuario.')).toBeInTheDocument();
+  });
+
   it('muestra cada etapa como completa o pendiente segun su estado', () => {
     render(
       <ReviewChecklist
@@ -28,14 +104,16 @@ describe('ReviewChecklist', () => {
         inconsistencies={[]}
         blockingQuestions={[]}
         onNavigateToStage={vi.fn()}
+        onNavigateToConflict={vi.fn()}
+        onResolveStage={vi.fn()}
         readyToGenerate={false}
         onGenerateClick={vi.fn()}
         isGenerating={false}
       />,
     );
 
-    expect(screen.getAllByText('⏳ Pendiente')).toHaveLength(5);
-    expect(screen.queryByText('✅ Completo')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Pendiente de generar')).toHaveLength(6);
+    expect(screen.queryByText('Completo')).not.toBeInTheDocument();
   });
 
   it('una etapa referenciada por una inconsistencia se muestra con conflicto, no como completa', () => {
@@ -45,14 +123,16 @@ describe('ReviewChecklist', () => {
         inconsistencies={[{ rule: 'entities-coverage', stages: ['data-model', 'api-spec'], message: 'x' }]}
         blockingQuestions={[]}
         onNavigateToStage={vi.fn()}
+        onNavigateToConflict={vi.fn()}
+        onResolveStage={vi.fn()}
         readyToGenerate={false}
         onGenerateClick={vi.fn()}
         isGenerating={false}
       />,
     );
 
-    expect(screen.getAllByText('⚠️ Con conflicto')).toHaveLength(2);
-    expect(screen.getAllByText('✅ Completo')).toHaveLength(3);
+    expect(screen.getAllByText('Con conflicto')).toHaveLength(2);
+    expect(screen.getAllByText('Completo')).toHaveLength(4);
   });
 
   it('hacer click en una etapa del checklist navega a esa etapa', async () => {
@@ -64,6 +144,8 @@ describe('ReviewChecklist', () => {
         inconsistencies={[]}
         blockingQuestions={[]}
         onNavigateToStage={onNavigateToStage}
+        onNavigateToConflict={vi.fn()}
+        onResolveStage={vi.fn()}
         readyToGenerate={false}
         onGenerateClick={vi.fn()}
         isGenerating={false}
@@ -75,15 +157,18 @@ describe('ReviewChecklist', () => {
     expect(onNavigateToStage).toHaveBeenCalledWith('dataModel');
   });
 
-  it('hacer click en "Ir a" dentro de un conflicto navega directamente a esa etapa', async () => {
+  it('hacer click en "Ir a" dentro de un conflicto navega a esa etapa pasando el conflicto a resolver', async () => {
     const user = userEvent.setup();
-    const onNavigateToStage = vi.fn();
+    const onNavigateToConflict = vi.fn();
+    const issue = { rule: 'entities-coverage', stages: ['api-spec'], message: 'La API referencia una entidad inexistente' };
     render(
       <ReviewChecklist
         stages={ALL_COMPLETE}
-        inconsistencies={[{ rule: 'entities-coverage', stages: ['api-spec'], message: 'La API referencia una entidad inexistente' }]}
+        inconsistencies={[issue]}
         blockingQuestions={[]}
-        onNavigateToStage={onNavigateToStage}
+        onNavigateToStage={vi.fn()}
+        onNavigateToConflict={onNavigateToConflict}
+        onResolveStage={vi.fn()}
         readyToGenerate={false}
         onGenerateClick={vi.fn()}
         isGenerating={false}
@@ -91,9 +176,54 @@ describe('ReviewChecklist', () => {
     );
 
     expect(screen.getByText('La API referencia una entidad inexistente')).toBeInTheDocument();
-    await user.click(screen.getByText('Ir a Especificación de API'));
+    await user.click(screen.getByText('Ir a Especificación de API a resolverlo'));
 
-    expect(onNavigateToStage).toHaveBeenCalledWith('apiSpec');
+    expect(onNavigateToConflict).toHaveBeenCalledWith('apiSpec', issue, 'api-spec');
+  });
+
+  it('el boton "Resolver" de la etapa combina todos los conflictos que la afectan', async () => {
+    const user = userEvent.setup();
+    const onResolveStage = vi.fn();
+    const issueA = { rule: 'entities-coverage', stages: ['api-spec'], message: 'Conflicto A' };
+    const issueB = { rule: 'target-users-coverage', stages: ['api-spec'], message: 'Conflicto B' };
+    render(
+      <ReviewChecklist
+        stages={ALL_COMPLETE}
+        inconsistencies={[issueA, issueB]}
+        blockingQuestions={[]}
+        onNavigateToStage={vi.fn()}
+        onNavigateToConflict={vi.fn()}
+        onResolveStage={onResolveStage}
+        readyToGenerate={false}
+        onGenerateClick={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Resolver' }));
+
+    expect(onResolveStage).toHaveBeenCalledWith('apiSpec', [
+      { issue: issueA, ruleStage: 'api-spec' },
+      { issue: issueB, ruleStage: 'api-spec' },
+    ]);
+  });
+
+  it('no muestra el boton "Resolver" para una etapa sin conflictos', () => {
+    render(
+      <ReviewChecklist
+        stages={ALL_COMPLETE}
+        inconsistencies={[]}
+        blockingQuestions={[]}
+        onNavigateToStage={vi.fn()}
+        onNavigateToConflict={vi.fn()}
+        onResolveStage={vi.fn()}
+        readyToGenerate={false}
+        onGenerateClick={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Resolver' })).not.toBeInTheDocument();
   });
 
   it('muestra las preguntas bloqueantes pendientes', () => {
@@ -103,6 +233,8 @@ describe('ReviewChecklist', () => {
         inconsistencies={[]}
         blockingQuestions={[{ id: 'q1', stage: 'PROBLEM_CONTEXT', question: 'Falta definir el publico objetivo', createdAt: '2026-01-01' }]}
         onNavigateToStage={vi.fn()}
+        onNavigateToConflict={vi.fn()}
+        onResolveStage={vi.fn()}
         readyToGenerate={false}
         onGenerateClick={vi.fn()}
         isGenerating={false}
@@ -119,6 +251,8 @@ describe('ReviewChecklist', () => {
         inconsistencies={[]}
         blockingQuestions={[{ id: 'q1', stage: 'PROBLEM_CONTEXT', question: 'x', createdAt: '2026-01-01' }]}
         onNavigateToStage={vi.fn()}
+        onNavigateToConflict={vi.fn()}
+        onResolveStage={vi.fn()}
         readyToGenerate={false}
         onGenerateClick={vi.fn()}
         isGenerating={false}
@@ -137,6 +271,8 @@ describe('ReviewChecklist', () => {
         inconsistencies={[]}
         blockingQuestions={[]}
         onNavigateToStage={vi.fn()}
+        onNavigateToConflict={vi.fn()}
+        onResolveStage={vi.fn()}
         readyToGenerate={true}
         onGenerateClick={onGenerateClick}
         isGenerating={false}
@@ -150,19 +286,21 @@ describe('ReviewChecklist', () => {
     expect(onGenerateClick).toHaveBeenCalledTimes(1);
   });
 
-  it('el boton queda deshabilitado mientras isGenerating es true, incluso si readyToGenerate es true', () => {
+  it('el boton queda deshabilitado mientras isGenerating es true, incluso si readyToGenerate es true (Button muestra "Cargando…")', () => {
     render(
       <ReviewChecklist
         stages={ALL_COMPLETE}
         inconsistencies={[]}
         blockingQuestions={[]}
         onNavigateToStage={vi.fn()}
+        onNavigateToConflict={vi.fn()}
+        onResolveStage={vi.fn()}
         readyToGenerate={true}
         onGenerateClick={vi.fn()}
         isGenerating={true}
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Generando…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cargando…' })).toBeDisabled();
   });
 });

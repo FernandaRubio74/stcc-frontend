@@ -9,9 +9,14 @@ export function getArchitecture(projectId: string, token: string): Promise<Archi
   return apiFetch<ArchitectureState>(`/projects/${projectId}/architecture`, { token });
 }
 
-export function recommendArchitecture(projectId: string, token: string): Promise<ArchitectureState> {
+export function recommendArchitecture(
+  projectId: string,
+  token: string,
+  instruction?: string,
+): Promise<ArchitectureState> {
   return apiFetch<ArchitectureState>(`/projects/${projectId}/architecture/recommend`, {
     method: 'POST',
+    body: instruction ? JSON.stringify({ instruction }) : undefined,
     token,
   });
 }

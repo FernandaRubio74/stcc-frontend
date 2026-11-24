@@ -3,6 +3,7 @@ import {
   approveApiSpecVersion,
   generateApiSpec,
   getApiSpec,
+  refineApiSpec,
   updateApiSpecEndpoints,
 } from '../../src/services/apiSpecService';
 
@@ -90,5 +91,16 @@ describe('apiSpecService', () => {
     mockFetchOnce(409, { error: 'No hay una version en edicion para aprobar' });
 
     await expect(approveApiSpecVersion('proj-1', 'token')).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('refineApiSpec hace POST a /refine con la instruccion', async () => {
+    mockFetchOnce(200, { id: 'v1', versionNumber: 1, status: 'DRAFT', endpoints: [] });
+
+    await refineApiSpec('proj-1', 'Agrega un endpoint de borrado', 'token');
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/projects/proj-1/api-spec/refine'),
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ instruction: 'Agrega un endpoint de borrado' }) }),
+    );
   });
 });

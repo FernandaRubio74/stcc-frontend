@@ -5,8 +5,11 @@ import { LoginForm, type LoginFormValues } from './LoginForm';
 import { login as loginRequest, getGoogleSsoUrl } from '../../services/authService';
 import { ApiError } from '../../lib/apiClient';
 import { useAuth } from '../../hooks/useAuth';
+import { usePageTitle } from '../../hooks/usePageTitle';
+import { Alert } from '../../components/Alert';
 
 export function LoginPage() {
+  usePageTitle('Iniciar sesión');
   const navigate = useNavigate();
   const { login: setSession } = useAuth();
   const [searchParams] = useSearchParams();
@@ -43,23 +46,24 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm space-y-6 rounded-lg bg-white p-8 shadow">
-        <h1 className="text-center text-2xl font-semibold text-gray-900">Iniciar sesión</h1>
-        {notice && (
-          <p role="status" className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
-            {notice}
+    <div className="flex min-h-screen items-center justify-center bg-surface px-4">
+      <div className="w-full max-w-sm space-y-6 rounded-dialog border border-outline-variant/30 bg-surface-container-low p-8 shadow-floating">
+        <div className="text-center">
+          <p className="font-mono text-headline-sm font-semibold tracking-tight text-on-surface">
+            <span className="text-primary">{'>'}</span> GENIAL
           </p>
-        )}
+          <h1 className="mt-1 text-headline-lg text-on-surface">Iniciar sesión</h1>
+        </div>
+        {notice && <Alert tone="success">{notice}</Alert>}
         <LoginForm
           onSubmit={handleSubmit}
           isSubmitting={mutation.isPending}
           formError={formError}
           onGoogleClick={handleGoogleClick}
         />
-        <p className="text-center text-sm text-gray-600">
+        <p className="text-center text-body-sm text-on-surface-variant">
           ¿No tienes cuenta?{' '}
-          <Link to="/register" className="font-medium text-indigo-600 hover:underline">
+          <Link to="/register" className="font-medium text-primary hover:underline">
             Regístrate
           </Link>
         </p>

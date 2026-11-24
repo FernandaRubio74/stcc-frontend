@@ -59,6 +59,17 @@ describe('architectureService', () => {
     await expect(recommendArchitecture('proj-1', 'token')).rejects.toMatchObject({ status: 409 });
   });
 
+  it('recommendArchitecture manda la instruccion opcional en el body (chatbot transversal)', async () => {
+    mockFetchOnce(201, { recommendedId: 'monolito-modular', justification: 'x', selectedId: null, selectedAt: null, selectedById: null });
+
+    await recommendArchitecture('proj-1', 'token', 'Prefiero algo simple');
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/projects/proj-1/architecture/recommend'),
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ instruction: 'Prefiero algo simple' }) }),
+    );
+  });
+
   it('selectArchitecture hace POST con el architectureId en el body', async () => {
     mockFetchOnce(200, { recommendedId: null, justification: null, selectedId: 'serverless-managed', selectedAt: '2026-01-01', selectedById: 'u1' });
 

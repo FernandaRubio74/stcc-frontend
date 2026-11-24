@@ -28,8 +28,8 @@ export function SsoCallbackPage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <p className="text-sm text-gray-500">Autenticando…</p>
+    <div className="flex min-h-screen items-center justify-center bg-surface">
+      <p className="text-body-sm text-on-surface-variant">Autenticando…</p>
     </div>
   );
 }

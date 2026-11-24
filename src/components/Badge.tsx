@@ -1,20 +1,29 @@
-type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
+export type BadgeTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
+type Tone = BadgeTone;
 
 interface Props {
   tone?: Tone;
   children: string;
 }
 
+// Ver DESIGN.md "Chips & Technical Badges": fondo con tinte de baja opacidad
+// + texto de alto contraste + borde en hairline a juego.
 const TONE_CLASSES: Record<Tone, string> = {
-  neutral: 'bg-gray-100 text-gray-600',
-  success: 'bg-green-100 text-green-700',
-  warning: 'bg-amber-100 text-amber-800',
-  danger: 'bg-red-100 text-red-700',
-  info: 'bg-indigo-50 text-indigo-700',
+  neutral: 'bg-surface-variant text-outline border border-outline-variant/40',
+  success: 'bg-tertiary-container/20 text-tertiary border border-tertiary/20',
+  warning: 'bg-warning-container/30 text-warning border border-warning/20',
+  danger: 'bg-danger-container/40 text-danger border border-danger/20',
+  info: 'bg-secondary-container/20 text-secondary border border-secondary/20',
 };
 
 // T-043.1: mismo patron visual que ya usaban a mano ReviewChecklist (estados
 // completo/pendiente/con conflicto) y VersionList (badge "ultima").
 export function Badge({ tone = 'neutral', children }: Props) {
-  return <span className={`rounded px-2 py-0.5 text-xs font-medium ${TONE_CLASSES[tone]}`}>{children}</span>;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-label-sm font-medium uppercase tracking-wide ${TONE_CLASSES[tone]}`}
+    >
+      {children}
+    </span>
+  );
 }

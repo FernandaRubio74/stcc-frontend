@@ -1,4 +1,6 @@
 import type { ArchitectureScenario, ArchitectureState } from '../../../types/architecture';
+import { Button } from '../../../components/Button';
+import { Icon } from '../../../components/icons';
 
 interface Props {
   catalog: ArchitectureScenario[];
@@ -8,84 +10,95 @@ interface Props {
   isSelecting: boolean;
 }
 
+// Ver DESIGN.md: cada tarjeta de arquitectura muestra sus piezas tecnicas
+// como chips de codigo (persistencia/backend/frontend/infra/operacion), no
+// como una lista de definiciones - se omiten las metricas inventadas del
+// mockup (score %, costo mensual, radar de decision, diagrama de
+// despliegue, .env autogenerado) porque no son datos que el backend calcula.
+function TechChips({ scenario }: { scenario: ArchitectureScenario }) {
+  const items = [
+    scenario.backend,
+    scenario.frontend,
+    scenario.persistence,
+    scenario.infrastructure,
+    scenario.operation,
+  ];
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {items.map((item, i) => (
+        <span key={i} className="rounded bg-surface-container-high px-space-sm py-1 font-mono text-code-sm text-on-surface">
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 // US-028/US-030: vista comparativa de las 5 arquitecturas del catalogo,
 // con la recomendacion de la IA resaltada y su justificacion, y un boton
 // de confirmacion que persiste la decision via API (T-030.3).
 export function ArchitectureSelector({ catalog, state, canSelect, onSelect, isSelecting }: Props) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-space-lg lg:grid-cols-2">
       {catalog.map((scenario) => {
         const isRecommended = scenario.id === state.recommendedId;
         const isSelected = scenario.id === state.selectedId;
 
         return (
-          <div
+          <article
             key={scenario.id}
             data-testid={`architecture-card-${scenario.id}`}
-            className={`rounded-md border p-4 ${
+            className={`flex flex-col gap-space-md rounded-xl p-space-xl shadow-sm transition-all ${
               isSelected
-                ? 'border-indigo-600 ring-2 ring-indigo-200'
+                ? 'bg-surface-container shadow-xl ring-2 ring-primary/40'
                 : isRecommended
-                  ? 'border-indigo-300'
-                  : 'border-gray-200'
+                  ? 'bg-surface-container shadow-lg ring-1 ring-primary/20'
+                  : 'bg-surface-container-low hover:bg-surface-container'
             }`}
           >
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="text-sm font-semibold text-gray-900">{scenario.name}</h3>
-              <div className="flex flex-col items-end gap-1">
-                {isRecommended && (
-                  <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
-                    Recomendada
-                  </span>
-                )}
-                {isSelected && (
-                  <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                    Confirmada
-                  </span>
-                )}
+            <div className="flex flex-wrap items-start justify-between gap-space-md">
+              <div className="flex flex-col gap-space-xs">
+                <div className="flex flex-wrap items-center gap-space-sm">
+                  {isRecommended && (
+                    <span className="flex items-center gap-1 rounded bg-primary-container px-2.5 py-1 text-label-sm text-on-primary-container shadow-sm">
+                      <Icon name="auto_awesome" className="text-[14px]" />
+                      Recomendada
+                    </span>
+                  )}
+                  {isSelected && (
+                    <span className="flex items-center gap-1 rounded bg-tertiary-container px-2.5 py-1 text-label-sm text-on-tertiary-container shadow-sm">
+                      <Icon name="check" className="text-[14px]" />
+                      Confirmada
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-headline-lg font-semibold text-on-surface">{scenario.name}</h3>
               </div>
+              {isSelected && <Icon name="check_circle" className="text-[28px] text-tertiary" filled />}
             </div>
 
-            <p className="mt-1 text-sm text-gray-600">{scenario.summary}</p>
+            <p className="text-body-md leading-relaxed text-on-surface-variant">{scenario.summary}</p>
 
             {isRecommended && state.justification && (
-              <p className="mt-2 rounded bg-indigo-50 p-2 text-xs text-indigo-900">{state.justification}</p>
+              <p className="rounded-control bg-primary-container/15 p-space-sm text-label-md text-on-surface">
+                {state.justification}
+              </p>
             )}
 
-            <dl className="mt-3 space-y-1 text-xs text-gray-600">
-              <div>
-                <dt className="inline font-semibold">Persistencia: </dt>
-                <dd className="inline">{scenario.persistence}</dd>
-              </div>
-              <div>
-                <dt className="inline font-semibold">Backend: </dt>
-                <dd className="inline">{scenario.backend}</dd>
-              </div>
-              <div>
-                <dt className="inline font-semibold">Frontend: </dt>
-                <dd className="inline">{scenario.frontend}</dd>
-              </div>
-              <div>
-                <dt className="inline font-semibold">Infraestructura: </dt>
-                <dd className="inline">{scenario.infrastructure}</dd>
-              </div>
-              <div>
-                <dt className="inline font-semibold">Operación: </dt>
-                <dd className="inline">{scenario.operation}</dd>
-              </div>
-            </dl>
+            <TechChips scenario={scenario} />
 
             {canSelect && !isSelected && (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
+                className="self-start"
                 onClick={() => onSelect(scenario.id)}
-                disabled={isSelecting}
-                className="mt-3 rounded-md border border-indigo-600 px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                loading={isSelecting}
               >
                 {isRecommended ? 'Aceptar recomendación' : 'Elegir esta opción'}
-              </button>
+              </Button>
             )}
-          </div>
+          </article>
         );
       })}
     </div>

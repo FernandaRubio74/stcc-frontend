@@ -52,7 +52,7 @@ export function EntityEditor({ entities, onChange, disabled }: EntityEditorProps
   return (
     <div className="space-y-4">
       {entities.map((entity, entityIndex) => (
-        <div key={entityIndex} className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+        <div key={entityIndex} className="space-y-3 rounded-card border border-outline-variant/30 bg-surface-container-low p-4 font-mono">
           <div className="flex items-center gap-2">
             <label className="sr-only" htmlFor={`entity-name-${entityIndex}`}>
               Nombre de la entidad {entityIndex + 1}
@@ -63,13 +63,13 @@ export function EntityEditor({ entities, onChange, disabled }: EntityEditorProps
               disabled={disabled}
               onChange={(e) => updateEntity(entityIndex, (ent) => ({ ...ent, name: e.target.value }))}
               placeholder="Nombre de la entidad"
-              className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex-1 rounded-control border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-sm font-medium text-on-surface disabled:cursor-not-allowed disabled:opacity-60"
             />
             {!disabled && (
               <button
                 type="button"
                 onClick={() => removeEntity(entityIndex)}
-                className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                className="rounded-control border border-danger/30 px-2 py-1 text-label-sm font-medium text-danger hover:bg-danger-container/20"
               >
                 Eliminar entidad
               </button>
@@ -79,7 +79,7 @@ export function EntityEditor({ entities, onChange, disabled }: EntityEditorProps
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-gray-500">
+                <tr className="text-left text-label-sm text-on-surface-variant">
                   <th className="pr-2">Atributo</th>
                   <th className="pr-2">Tipo</th>
                   <th className="pr-2">PK</th>
@@ -103,7 +103,7 @@ export function EntityEditor({ entities, onChange, disabled }: EntityEditorProps
                         onChange={(e) =>
                           updateAttribute(entityIndex, attributeIndex, (a) => ({ ...a, name: e.target.value }))
                         }
-                        className="w-28 rounded-md border border-gray-300 px-2 py-1 disabled:opacity-60"
+                        className="w-28 rounded-control border border-outline-variant bg-surface-container-lowest px-2 py-1 text-on-surface disabled:opacity-60"
                       />
                     </td>
                     <td className="pr-2 py-1">
@@ -117,7 +117,7 @@ export function EntityEditor({ entities, onChange, disabled }: EntityEditorProps
                         onChange={(e) =>
                           updateAttribute(entityIndex, attributeIndex, (a) => ({ ...a, type: e.target.value }))
                         }
-                        className="w-24 rounded-md border border-gray-300 px-2 py-1 disabled:opacity-60"
+                        className="w-24 rounded-control border border-outline-variant bg-surface-container-lowest px-2 py-1 text-on-surface disabled:opacity-60"
                       />
                     </td>
                     <td className="pr-2 py-1 text-center">
@@ -168,7 +168,7 @@ export function EntityEditor({ entities, onChange, disabled }: EntityEditorProps
                                 : null,
                             }))
                           }
-                          className="w-20 rounded-md border border-gray-300 px-2 py-1 disabled:opacity-60"
+                          className="w-20 rounded-control border border-outline-variant bg-surface-container-lowest px-2 py-1 text-on-surface disabled:opacity-60"
                         />
                         <input
                           aria-label={`${attribute.name || 'atributo'} FK atributo referenciado`}
@@ -180,7 +180,7 @@ export function EntityEditor({ entities, onChange, disabled }: EntityEditorProps
                               a.foreignKey ? { ...a, foreignKey: { ...a.foreignKey, attribute: e.target.value } } : a,
                             )
                           }
-                          className="w-20 rounded-md border border-gray-300 px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="w-20 rounded-control border border-outline-variant bg-surface-container-lowest px-2 py-1 text-on-surface disabled:opacity-60 disabled:cursor-not-allowed"
                         />
                       </div>
                     </td>
@@ -189,7 +189,7 @@ export function EntityEditor({ entities, onChange, disabled }: EntityEditorProps
                         <button
                           type="button"
                           onClick={() => removeAttribute(entityIndex, attributeIndex)}
-                          className="text-xs font-medium text-red-600 hover:underline"
+                          className="text-label-sm font-medium text-danger hover:underline"
                         >
                           Quitar
                         </button>
@@ -205,7 +205,7 @@ export function EntityEditor({ entities, onChange, disabled }: EntityEditorProps
             <button
               type="button"
               onClick={() => addAttribute(entityIndex)}
-              className="text-xs font-medium text-indigo-600 hover:underline"
+              className="text-label-sm font-medium text-primary hover:underline"
             >
               + Agregar atributo
             </button>
@@ -217,7 +217,7 @@ export function EntityEditor({ entities, onChange, disabled }: EntityEditorProps
         <button
           type="button"
           onClick={addEntity}
-          className="rounded-md border border-dashed border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          className="rounded-control border border-dashed border-outline-variant px-4 py-2 text-body-sm font-medium text-on-surface-variant hover:bg-surface-container-high"
         >
           + Agregar entidad
         </button>

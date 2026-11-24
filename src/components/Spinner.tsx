@@ -6,8 +6,8 @@ interface Props {
 // ningun indicador visual.
 export function Spinner({ label = 'Cargando…' }: Props) {
   return (
-    <div className="flex items-center gap-2 text-sm text-gray-500" role="status">
-      <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600" />
+    <div className="flex items-center gap-2 text-body-sm text-on-surface-variant" role="status">
+      <span className="h-4 w-4 animate-spin rounded-full border-2 border-outline-variant border-t-primary motion-reduce:animate-none" />
       {label}
     </div>
   );

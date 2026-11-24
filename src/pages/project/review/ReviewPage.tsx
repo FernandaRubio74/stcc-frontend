@@ -1,11 +1,20 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../hooks/useAuth';
+import { usePageTitle } from '../../../hooks/usePageTitle';
 import { getReviewSummary, postFinalGeneration } from '../../../services/reviewService';
+import { generateArchitectureDocument, generateSpecDocument } from '../../../services/documentsService';
 import { ApiError } from '../../../lib/apiClient';
 import { ReviewChecklist } from './ReviewChecklist';
-import type { StageKey } from '../../../types/review';
+import { buildCombinedConflictInstruction, buildConflictInstruction } from './conflictInstructions';
+import type { Inconsistency, StageKey } from '../../../types/review';
+import { AppShell } from '../../../components/AppShell';
+import { BackLink } from '../../../components/BackLink';
+import { PageHeader } from '../../../components/PageHeader';
+import { Alert } from '../../../components/Alert';
+import { Skeleton } from '../../../components/Skeleton';
+import { useToast } from '../../../components/Toast';
 
 const STAGE_ROUTES: Record<StageKey, string> = {
   definition: 'wizard',
@@ -13,18 +22,20 @@ const STAGE_ROUTES: Record<StageKey, string> = {
   apiSpec: 'api-spec',
   screens: 'screens',
   architecture: 'architecture',
+  testing: 'testing',
 };
 
 // STCC-166 (US-033): pantalla de revision final — checklist por etapa con
 // estado visual, navegacion directa a conflictos, y el boton de generacion
 // final deshabilitado mientras el proyecto no este listo (US-031/US-032).
 export function ReviewPage() {
+  usePageTitle('Revisión final');
   const { projectId } = useParams<{ projectId: string }>();
   const { token } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [generateError, setGenerateError] = useState<string | null>(null);
-  const [generateSuccess, setGenerateSuccess] = useState<string | null>(null);
 
   const reviewQueryKey = ['project', projectId, 'review-summary'];
 
@@ -34,14 +45,26 @@ export function ReviewPage() {
     enabled: Boolean(token && projectId),
   });
 
+  // El boton decia "Generar documentacion final" pero solo llamaba al
+  // chequeo previo de consistencia, que no genera nada: mostraba un toast
+  // de "se puede proceder" y ahi terminaba, sin documentos y sin llevar a
+  // ninguna parte. Ahora hace lo que dice: valida, genera los dos
+  // documentos (especificacion y arquitectura, ambos deterministicos, sin
+  // IA) y lleva a la pantalla de Documentos finales.
   const generateMutation = useMutation({
-    mutationFn: () => postFinalGeneration(projectId as string, token as string),
-    onSuccess: (result) => {
+    mutationFn: async () => {
+      await postFinalGeneration(projectId as string, token as string);
+      await Promise.all([
+        generateSpecDocument(projectId as string, token as string),
+        generateArchitectureDocument(projectId as string, token as string),
+      ]);
+    },
+    onSuccess: () => {
       setGenerateError(null);
-      setGenerateSuccess(result.message);
+      showToast('Documentación final generada');
+      navigate(`/projects/${projectId}/documents`);
     },
     onError: (error: unknown) => {
-      setGenerateSuccess(null);
       setGenerateError(error instanceof ApiError ? error.message : 'Ocurrió un error inesperado');
       queryClient.invalidateQueries({ queryKey: reviewQueryKey });
     },
@@ -51,57 +74,69 @@ export function ReviewPage() {
     navigate(`/projects/${projectId}/${STAGE_ROUTES[stage]}`);
   }
 
+  // Pedido explicito: ademas de llevarte a la etapa con el conflicto, la
+  // etapa destino abre con el chat "Ajustar con IA" (o, si es la etapa de
+  // Definicion, el chat del wizard) ya cargado con la instruccion para
+  // resolverlo - no hace falta redactarla de cero.
+  function handleNavigateToConflict(stage: StageKey, issue: Inconsistency, ruleStage: string) {
+    navigate(`/projects/${projectId}/${STAGE_ROUTES[stage]}`, {
+      state: { prefillInstruction: buildConflictInstruction(issue, ruleStage) },
+    });
+  }
+
+  // Boton "Resolver" de la etapa (en el checklist, al lado del badge de
+  // conflicto): combina TODOS los conflictos de esa etapa en una sola
+  // instruccion, en vez de que la persona tenga que ir conflicto por
+  // conflicto desde la lista de abajo.
+  function handleResolveStage(stage: StageKey, issues: { issue: Inconsistency; ruleStage: string }[]) {
+    if (issues.length === 0) return;
+    const ruleStage = issues[0].ruleStage;
+    navigate(`/projects/${projectId}/${STAGE_ROUTES[stage]}`, {
+      state: { prefillInstruction: buildCombinedConflictInstruction(issues.map((i) => i.issue), ruleStage) },
+    });
+  }
+
   if (reviewQuery.isPending) {
-    return <p className="p-8 text-sm text-gray-500">Cargando…</p>;
+    return (
+      <AppShell>
+        <Skeleton variant="text" className="w-48" />
+        <Skeleton variant="block" />
+      </AppShell>
+    );
   }
 
   if (reviewQuery.isError || !reviewQuery.data) {
     return (
-      <div className="space-y-3 p-8">
-        <p role="alert" className="text-sm text-red-700">
+      <AppShell>
+        <Alert onRetry={() => reviewQuery.refetch()}>
           No se pudo cargar la revision del proyecto
-        </p>
-        <Link to={`/projects/${projectId}`} className="text-sm text-indigo-600 hover:underline">
-          Volver al proyecto
-        </Link>
-      </div>
+        </Alert>
+        <BackLink to={`/projects/${projectId}`}>Volver al proyecto</BackLink>
+      </AppShell>
     );
   }
 
   const { stages, blockingQuestions, inconsistencies, readyToGenerate } = reviewQuery.data;
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
-      <div className="mx-auto max-w-3xl space-y-6">
-        <Link to={`/projects/${projectId}`} className="text-sm text-indigo-600 hover:underline">
-          ← Volver al proyecto
-        </Link>
+    <AppShell>
+      <BackLink to={`/projects/${projectId}`}>Volver al proyecto</BackLink>
 
-        <header>
-          <h1 className="text-2xl font-semibold text-gray-900">Revisión final</h1>
-        </header>
+      <PageHeader title="Revisión final" />
 
-        {generateError && (
-          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            {generateError}
-          </p>
-        )}
-        {generateSuccess && (
-          <p role="status" className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
-            {generateSuccess}
-          </p>
-        )}
+      {generateError && <Alert>{generateError}</Alert>}
 
-        <ReviewChecklist
-          stages={stages}
-          inconsistencies={inconsistencies}
-          blockingQuestions={blockingQuestions}
-          onNavigateToStage={handleNavigateToStage}
-          readyToGenerate={readyToGenerate}
-          onGenerateClick={() => generateMutation.mutate()}
-          isGenerating={generateMutation.isPending}
-        />
-      </div>
-    </div>
+      <ReviewChecklist
+        stages={stages}
+        inconsistencies={inconsistencies}
+        blockingQuestions={blockingQuestions}
+        onNavigateToStage={handleNavigateToStage}
+        onNavigateToConflict={handleNavigateToConflict}
+        onResolveStage={handleResolveStage}
+        readyToGenerate={readyToGenerate}
+        onGenerateClick={() => generateMutation.mutate()}
+        isGenerating={generateMutation.isPending}
+      />
+    </AppShell>
   );
 }

@@ -11,12 +11,12 @@ interface Props {
 // no se desborde en movil en vez de quebrar a una segunda linea.
 export function PageHeader({ title, subtitle, actions }: Props) {
   return (
-    <header className="flex flex-wrap items-start justify-between gap-3">
+    <header className="flex flex-wrap items-start justify-between gap-space-lg">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
-        {subtitle && <p className="text-sm text-gray-600">{subtitle}</p>}
+        <h1 className="text-headline-xl tracking-tight text-on-surface">{title}</h1>
+        {subtitle && <p className="text-body-md text-on-surface-variant">{subtitle}</p>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap gap-space-md">{actions}</div>}
     </header>
   );
 }

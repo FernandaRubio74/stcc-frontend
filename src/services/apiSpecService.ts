@@ -12,6 +12,14 @@ export function generateApiSpec(projectId: string, token: string): Promise<ApiSp
   });
 }
 
+export function refineApiSpec(projectId: string, instruction: string, token: string): Promise<ApiSpecVersionView> {
+  return apiFetch<ApiSpecVersionView>(`/projects/${projectId}/api-spec/refine`, {
+    method: 'POST',
+    body: JSON.stringify({ instruction }),
+    token,
+  });
+}
+
 export function updateApiSpecEndpoints(
   projectId: string,
   endpoints: Endpoint[],
